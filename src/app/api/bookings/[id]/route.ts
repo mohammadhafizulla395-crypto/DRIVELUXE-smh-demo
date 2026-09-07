@@ -46,8 +46,8 @@ export async function PATCH(
       }
     }
 
-    // If cancelling a previously-confirmed booking, refund the awarded points.
-    const wasActive = booking.status === 'confirmed' || booking.status === 'pending'
+    // If cancelling an active booking (booked or paid), refund the awarded points.
+    const wasActive = booking.status === 'booked' || booking.status === 'paid'
     const isCancelling = status === 'cancelled'
 
     const updated = await db.$transaction(async (tx) => {

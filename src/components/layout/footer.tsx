@@ -1,6 +1,6 @@
 'use client'
 
-import { Car, Mail, Phone, MapPin, Instagram, Twitter, Facebook, Shield } from 'lucide-react'
+import { Car, Mail, Phone, MapPin, Instagram, Twitter, Facebook } from 'lucide-react'
 import { useAuthStore } from '@/store/auth-store'
 import { useUIStore, type ViewName } from '@/store/ui-store'
 
@@ -137,15 +137,6 @@ export function Footer() {
                   Sign in to access your account, refunds, and support.
                 </li>
               )}
-              <li>
-                <button
-                  onClick={() => go('admin-login')}
-                  className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors mt-1"
-                  aria-label="Admin portal"
-                >
-                  <Shield className="h-3.5 w-3.5" /> Admin portal
-                </button>
-              </li>
             </ul>
           </div>
         </div>

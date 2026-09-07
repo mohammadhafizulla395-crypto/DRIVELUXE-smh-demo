@@ -21,25 +21,86 @@ Next.js Route Handlers (`/api/*`).
 ┌──────────────────────────▼──────────────────────────────┐
 │              Next.js 16 App Router (Server)             │
 │                                                         │
+│  ── Customer App ──                                     │
 │  /api/auth/*        → register, login, me, logout, profile │
-│  /api/admin/login   → separate admin-portal login (admin-only) │
-│  /api/admin/stats   → KPIs (admin)                      │
-│  /api/admin/tickets → list + update support tickets (admin) │
-│  /api/cars/*        → list, detail, CRUD (admin)        │
+│  /api/cars/*        → list, detail                      │
 │  /api/bookings/*    → create (+points), list, cancel (−points) │
 │  /api/reviews/*     → list by car, create (eligibility), mine │
 │  /api/support       → submit + list support tickets     │
 │  /api/points        → balance + transaction history     │
 │                                                         │
+│  ── Admin Console (fully separated, admin-only) ──      │
+│  /api/admin/login       → admin-only login (403 non-admin) │
+│  /api/admin/stats       → operational cards (no graphs)  │
+│  /api/admin/cars/*      → list, CRUD, archive, bulk      │
+│  /api/admin/bookings/*  → list, workflow, archive, bulk  │
+│  /api/admin/customers/* → list, archive                  │
+│  /api/admin/payments/*  → list, workflow status          │
+│  /api/admin/complaints/*→ list, workflow, archive, bulk  │
+│  /api/admin/reviews/*   → list, moderate (archive)       │
+│  /api/admin/activity    → recent activity feed           │
+│  /api/admin/pickups     → upcoming pickups               │
+│  /api/admin/settings    → owner contact + system info    │
+│                                                         │
 │  Auth: JWT verified from httpOnly cookie per request    │
+│  Admin guard: requireAdmin() checks role === 'admin'    │
 └──────────────────────────┬──────────────────────────────┘
                            │ Prisma Client
 ┌──────────────────────────▼──────────────────────────────┐
 │                 SQLite (file-based DB)                   │
 │   Tables: User, Car, Booking, Review, SupportTicket,    │
-│           PointTransaction                              │
+│           PointTransaction, Payment, Activity            │
 └─────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## 1B. Admin Console — Separated Architecture
+
+The Admin Console is a **completely separate application** living inside the
+same Next.js codebase. It has its own:
+
+- **Login** (`#/admin/login`) — rejects non-admin accounts with 403.
+- **Layout** — fixed collapsible sidebar + top search bar + breadcrumbs +
+  dark operator-first UI (no shared navbar/footer with the customer site).
+- **Session check** — every `/api/admin/*` route calls `requireAdmin()` which
+  verifies both authentication AND `role === 'admin'`.
+- **Routing** — 8 sections via hash routes (`#/admin/dashboard`,
+  `#/admin/cars`, `#/admin/bookings`, `#/admin/customers`,
+  `#/admin/payments`, `#/admin/complaints`, `#/admin/reviews`,
+  `#/admin/settings`).
+
+### Access control
+
+| Visitor | Visits `#/admin/*` | Result |
+|---------|-------------------|--------|
+| Guest (not logged in) | any admin route | Redirect to `#/admin/login` |
+| Logged-in customer | any admin route | **403 Forbidden** page |
+| Logged-in admin | any admin route | Rendered inside AdminLayout |
+
+The customer navbar and footer contain **no link** to the admin console. It
+is accessible only by directly navigating to `#/admin/login`.
+
+### Status workflows (enforced server-side)
+
+**Bookings:** `booked → paid → pickup → in_use → returned → completed`
+(cancellation allowed only from `booked` or `paid`). Invalid transitions
+return HTTP 400 with an explanatory message. Payment auto-syncs: when a
+booking moves to `paid`, its payment moves to `paid`; cancellation refunds
+the payment and reverses awarded points.
+
+**Complaints:** `open → in_progress → resolved → closed`. Any forward
+transition is allowed; closed is final.
+
+**Payments:** `pending → paid → refunded`. Paid syncs the booking to `paid`;
+refunded syncs the booking to `cancelled`.
+
+### Soft delete (archive)
+
+No admin table performs hard deletes. Every manageable entity (Car, Booking,
+Customer, SupportTicket, Review) has an `archived` boolean flag. Admin tables
+default to showing non-archived items; a "Show archived" toggle reveals them.
+Bulk archive/restore is supported on Cars, Bookings, and Complaints.
 
 ---
 

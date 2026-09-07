@@ -340,75 +340,96 @@ async function main() {
   const reviewCar = thirdCar[2] ?? firstCar
 
   if (demoUser && firstCar && (await db.booking.count()) === 0) {
-    const start1 = new Date()
-    start1.setDate(start1.getDate() + 5)
-    const end1 = new Date(start1)
-    end1.setDate(end1.getDate() + 2)
-    const days1 = 3
-    const price1 = Math.round(days1 * firstCar.pricePerDay * 100) / 100
-    const points1 = Math.round(price1)
+    const carsForBookings = await db.car.findMany({ take: 3, orderBy: { createdAt: 'asc' } })
+    const c1 = carsForBookings[0]
+    const c2 = carsForBookings[1] ?? c1
+    const c3 = carsForBookings[2] ?? c1
 
+    // Booking 1: upcoming, "paid" status (pending pickup) — pickup today
+    const start1 = new Date(); start1.setHours(0,0,0,0)
+    const end1 = new Date(start1); end1.setDate(end1.getDate() + 2)
+    const days1 = 3
+    const price1 = Math.round(days1 * c1.pricePerDay * 100) / 100
+    const points1 = Math.round(price1)
     const booking1 = await db.booking.create({
       data: {
-        userId: demoUser.id,
-        carId: firstCar.id,
-        startDate: start1,
-        endDate: end1,
-        totalDays: days1,
-        totalPrice: price1,
-        pickupLocation: 'Downtown Office',
-        status: 'confirmed',
+        userId: demoUser.id, carId: c1.id, startDate: start1, endDate: end1,
+        totalDays: days1, totalPrice: price1, pickupLocation: 'Downtown Office',
+        status: 'paid',
       },
     })
-
+    await db.payment.create({
+      data: { bookingId: booking1.id, userId: demoUser.id, amount: price1, method: 'card', status: 'paid', txnRef: 'TXN-DEMO-0001' },
+    })
     await db.pointTransaction.create({
-      data: {
-        userId: demoUser.id,
-        amount: points1,
-        reason: `Points earned — booking for ${firstCar.brand} ${firstCar.name}`,
-        bookingId: booking1.id,
-      },
+      data: { userId: demoUser.id, amount: points1, reason: `Points earned — booking for ${c1.brand} ${c1.name}`, bookingId: booking1.id },
     })
-    await db.user.update({
-      where: { id: demoUser.id },
-      data: { points: { increment: points1 } },
+    await db.user.update({ where: { id: demoUser.id }, data: { points: { increment: points1 } } })
+    await db.activity.create({
+      data: { type: 'booking_created', message: `${demoUser.name} booked ${c1.brand} ${c1.name} (${days1}d, $${price1})`, refId: booking1.id },
     })
 
-    // A completed past booking
-    const start2 = new Date()
-    start2.setDate(start2.getDate() - 14)
-    const end2 = new Date(start2)
-    end2.setDate(end2.getDate() + 1)
+    // Booking 2: completed past booking, "completed" status
+    const start2 = new Date(); start2.setDate(start2.getDate() - 14); start2.setHours(0,0,0,0)
+    const end2 = new Date(start2); end2.setDate(end2.getDate() + 1)
     const days2 = 2
-    const price2 = Math.round(days2 * firstCar.pricePerDay * 100) / 100
+    const price2 = Math.round(days2 * c2.pricePerDay * 100) / 100
     const points2 = Math.round(price2)
-
     const booking2 = await db.booking.create({
       data: {
-        userId: demoUser.id,
-        carId: firstCar.id,
-        startDate: start2,
-        endDate: end2,
-        totalDays: days2,
-        totalPrice: price2,
-        pickupLocation: 'Airport Terminal',
+        userId: demoUser.id, carId: c2.id, startDate: start2, endDate: end2,
+        totalDays: days2, totalPrice: price2, pickupLocation: 'Airport Terminal',
         status: 'completed',
       },
     })
-    await db.pointTransaction.create({
-      data: {
-        userId: demoUser.id,
-        amount: points2,
-        reason: `Points earned — booking for ${firstCar.brand} ${firstCar.name}`,
-        bookingId: booking2.id,
-      },
+    await db.payment.create({
+      data: { bookingId: booking2.id, userId: demoUser.id, amount: price2, method: 'card', status: 'paid', txnRef: 'TXN-DEMO-0002' },
     })
-    await db.user.update({
-      where: { id: demoUser.id },
-      data: { points: { increment: points2 } },
+    await db.pointTransaction.create({
+      data: { userId: demoUser.id, amount: points2, reason: `Points earned — booking for ${c2.brand} ${c2.name}`, bookingId: booking2.id },
+    })
+    await db.user.update({ where: { id: demoUser.id }, data: { points: { increment: points2 } } })
+    await db.activity.create({
+      data: { type: 'booking_created', message: `${demoUser.name} booked ${c2.brand} ${c2.name} (${days2}d, $${price2})`, refId: booking2.id },
     })
 
-    console.log('✅ Created sample bookings + points for demo user')
+    // Booking 3: upcoming "booked" (not yet paid), in 5 days — pending pickup
+    const start3 = new Date(); start3.setDate(start3.getDate() + 5); start3.setHours(0,0,0,0)
+    const end3 = new Date(start3); end3.setDate(end3.getDate() + 1)
+    const days3 = 2
+    const price3 = Math.round(days3 * c3.pricePerDay * 100) / 100
+    const booking3 = await db.booking.create({
+      data: {
+        userId: demoUser.id, carId: c3.id, startDate: start3, endDate: end3,
+        totalDays: days3, totalPrice: price3, pickupLocation: 'Riverside Hub',
+        status: 'booked',
+      },
+    })
+    await db.payment.create({
+      data: { bookingId: booking3.id, userId: demoUser.id, amount: price3, method: 'card', status: 'pending' },
+    })
+    await db.activity.create({
+      data: { type: 'booking_created', message: `${demoUser.name} booked ${c3.brand} ${c3.name} (${days3}d, $${price3})`, refId: booking3.id },
+    })
+
+    console.log('✅ Created sample bookings + payments + points + activities for demo user')
+  }
+
+  // Sample support ticket / complaint from the demo user
+  if (demoUser && (await db.supportTicket.count()) === 0) {
+    await db.supportTicket.create({
+      data: {
+        userId: demoUser.id,
+        subject: 'Question about my upcoming pickup',
+        category: 'booking',
+        message: 'I have a booking starting soon and would like to confirm the pickup location and time. Can I change it to Airport Terminal?',
+        status: 'open',
+      },
+    })
+    await db.activity.create({
+      data: { type: 'complaint', message: `${demoUser.name} submitted a support ticket: "Question about my upcoming pickup"` },
+    })
+    console.log('✅ Created sample support ticket')
   }
 
   // Sample review from the demo user

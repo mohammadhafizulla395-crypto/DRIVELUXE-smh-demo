@@ -13,9 +13,17 @@ import { CatalogView } from '@/components/cars/catalog-view'
 import { CarDetailView } from '@/components/cars/car-detail-view'
 import { BookingView } from '@/components/booking/booking-view'
 import { UserDashboard } from '@/components/dashboard/user-dashboard'
-import { AdminDashboard } from '@/components/dashboard/admin-dashboard'
 import { AdminLoginForm } from '@/components/admin/admin-login-form'
-import { AdminNavbar } from '@/components/admin/admin-navbar'
+import { AdminLayout } from '@/components/admin/admin-layout'
+import { AdminForbidden } from '@/components/admin/admin-forbidden'
+import { AdminDashboard } from '@/components/admin/sections/admin-dashboard'
+import { AdminCars } from '@/components/admin/sections/admin-cars'
+import { AdminBookings } from '@/components/admin/sections/admin-bookings'
+import { AdminCustomers } from '@/components/admin/sections/admin-customers'
+import { AdminPayments } from '@/components/admin/sections/admin-payments'
+import { AdminComplaints } from '@/components/admin/sections/admin-complaints'
+import { AdminReviews } from '@/components/admin/sections/admin-reviews'
+import { AdminSettings } from '@/components/admin/sections/admin-settings'
 import {
   PrivacyView,
   TermsView,
@@ -45,13 +53,13 @@ export default function Home() {
     }
   }, [])
 
-  // Auth guards: redirect protected views to login
+  // Auth guards: redirect protected views to login (main-site only;
+  // admin views are guarded in the admin block below).
   useEffect(() => {
     const protectedViews = [
       'profile',
       'bookings',
       'booking',
-      'admin',
       'my-reviews',
       'points',
       'refund',
@@ -67,11 +75,7 @@ export default function Home() {
     ) {
       navigate('login')
     }
-    // Admin portal guard
-    if (view === 'admin' && hydrated && (!isAuthenticated || !isAdmin)) {
-      navigate('admin-login')
-    }
-  }, [view, hydrated, isAuthenticated, isAdmin, navigate])
+  }, [view, hydrated, isAuthenticated, navigate])
 
   // Scroll to top on view change
   useEffect(() => {
@@ -90,24 +94,61 @@ export default function Home() {
     )
   }
 
-  // ---------- Separated Admin Portal ----------
-  // The admin portal has its own layout, navbar, and login — fully separate
-  // from the main site (no main navbar/footer).
+  // ---------- Separated Admin Console ----------
+  // Fully separate from the main site: own login, own layout (sidebar + topbar),
+  // own session checks. Normal users get a 403; guests redirect to admin login.
+  const adminViews = [
+    'admin',
+    'admin-cars',
+    'admin-bookings',
+    'admin-customers',
+    'admin-payments',
+    'admin-complaints',
+    'admin-reviews',
+    'admin-settings',
+  ]
+
   if (view === 'admin-login') {
+    // Already-authed admin going to /admin/login → skip to dashboard
+    if (isAuthenticated && isAdmin) {
+      navigate('admin')
+      return null
+    }
     return <AdminLoginForm />
   }
 
-  if (view === 'admin') {
-    if (!isAuthenticated || !isAdmin) {
-      return <AdminLoginForm />
+  if (view === 'admin-forbidden') {
+    return <AdminForbidden />
+  }
+
+  if (adminViews.includes(view)) {
+    if (!hydrated) {
+      return (
+        <div className="min-h-screen grid place-items-center bg-background">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )
+    }
+    // Guest → redirect to admin login
+    if (!isAuthenticated) {
+      navigate('admin-login')
+      return null
+    }
+    // Authenticated but NOT admin → 403
+    if (!isAdmin) {
+      return <AdminForbidden />
     }
     return (
-      <div className="min-h-screen flex flex-col bg-background">
-        <AdminNavbar />
-        <main className="flex-1">
-          <AdminDashboard />
-        </main>
-      </div>
+      <AdminLayout>
+        {view === 'admin' && <AdminDashboard />}
+        {view === 'admin-cars' && <AdminCars />}
+        {view === 'admin-bookings' && <AdminBookings />}
+        {view === 'admin-customers' && <AdminCustomers />}
+        {view === 'admin-payments' && <AdminPayments />}
+        {view === 'admin-complaints' && <AdminComplaints />}
+        {view === 'admin-reviews' && <AdminReviews />}
+        {view === 'admin-settings' && <AdminSettings />}
+      </AdminLayout>
     )
   }
 

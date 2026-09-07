@@ -67,7 +67,7 @@ export function UserDashboard() {
   const stats = {
     total: bookings.length,
     upcoming: bookings.filter(
-      (b) => b.status === 'confirmed' || b.status === 'pending',
+      (b) => ['booked', 'paid', 'pickup', 'in_use', 'returned'].includes(b.status),
     ).length,
     completed: bookings.filter((b) => b.status === 'completed').length,
     spent: bookings
@@ -198,7 +198,7 @@ export function UserDashboard() {
                     </div>
                     <div className="flex items-center justify-between mt-2">
                       <span className="font-semibold">${b.totalPrice}</span>
-                      {(b.status === 'confirmed' || b.status === 'pending') && (
+                      {(b.status === 'booked' || b.status === 'paid') && (
                         <Button
                           size="sm"
                           variant="ghost"

@@ -90,3 +90,72 @@ The app defaults to **dark mode**; light mode is supported but secondary.
 - All images have descriptive `alt`.
 - Icons paired with text labels (or `sr-only` labels).
 - Keyboard navigable: tab order follows visual order; modals trap focus.
+
+---
+
+## 10. Admin Console — Operator UI (separate design language)
+
+The Admin Console is **visually independent** from the customer website. It
+uses a dedicated layout and operator-first styling — no shared navbar,
+footer, or hero treatment.
+
+### Layout
+
+- **Fixed collapsible sidebar** (left): 240px expanded, 68px collapsed.
+  Toggle via the topbar button or `Cmd/Ctrl + [`. Collapses to icon-only
+  with tooltips. On mobile (< lg), becomes a slide-in Sheet.
+- **Top bar** (sticky, 64px): collapse toggle · breadcrumbs · quick search
+  field (decorative `⌘K` hint) · notification bell · admin avatar dropdown.
+- **Content area**: padded (`p-4 sm:p-6 lg:p-8`), scrolls independently.
+
+### Sidebar navigation (8 items)
+
+Dashboard · Cars · Bookings · Customers · Payments · Complaints · Reviews ·
+Settings. Active item: `bg-primary/15 text-primary`. Inactive: muted, hover
+lift. Footer of sidebar: "View site" + "Sign out".
+
+### Color & density
+
+- Same dark zinc palette as the customer site, but **denser and flatter**:
+  cards use `bg-card/40`, tables use `bg-muted/30` headers, tighter row
+  padding (`py-3`). No hero gradients, no glow effects, no Framer Motion
+  entrance animations on data — operators want speed, not theatre.
+- Status badges use the workflow color map:
+  - Bookings: booked=amber, paid=emerald, pickup=sky, in_use=violet,
+    returned=teal, completed=zinc, cancelled=rose.
+  - Payments: pending=amber, paid=emerald, refunded=rose.
+  - Complaints: open=rose, in_progress=amber, resolved=emerald, closed=zinc.
+
+### Tables
+
+Every management screen uses a consistent table primitive:
+- Sticky toolbar: debounced search · filter dropdowns · sort dropdown ·
+  archived toggle · primary action button.
+- Checkbox column for row selection → bulk action bar slides in.
+- Sortable headers, pagination at the bottom.
+- Row actions (edit/archive/status) are icon buttons with `aria-label`s.
+- **Archive instead of delete** — no destructive irreversible actions.
+
+### Drawers over page changes
+
+Detail views and edit forms open in a right-side **Drawer** (shadcn
+`Drawer`), not a new route. This keeps the operator in context. Confirmation
+actions use `AlertDialog` modals.
+
+### Skeletons
+
+Every async table/card shows a `shimmer` skeleton matching the final
+content shape while loading — never a blank gap.
+
+### Keyboard friendliness
+
+- `Cmd/Ctrl + [` toggles the sidebar.
+- All interactive elements are focusable; focus-visible rings are amber.
+- Tables use semantic `<table>`, `<th scope="col">`, `<button>` elements.
+- Icon-only buttons carry `aria-label`.
+
+### 403 page
+
+Non-admin users who reach an admin route see a dedicated **403 Forbidden**
+page (not the customer 404) with a clear "Administrator access required"
+message and links back to the main site or admin login.

@@ -108,7 +108,7 @@ export async function POST(req: Request) {
     const totalPrice = Math.round(totalDays * car.pricePerDay * 100) / 100
     const pointsEarned = Math.round(totalPrice * POINTS_PER_DOLLAR)
 
-    // Atomic: create booking + award points + record transaction.
+    // Atomic: create booking + pending payment + award points + activity.
     const booking = await db.$transaction(async (tx) => {
       const created = await tx.booking.create({
         data: {
@@ -119,7 +119,7 @@ export async function POST(req: Request) {
           totalDays,
           totalPrice,
           pickupLocation: data.pickupLocation,
-          status: 'confirmed',
+          status: 'booked',
         },
         include: {
           car: {
@@ -131,6 +131,17 @@ export async function POST(req: Request) {
               pricePerDay: true,
             },
           },
+        },
+      })
+
+      // Create a pending payment for this booking (admin marks it paid)
+      await tx.payment.create({
+        data: {
+          bookingId: created.id,
+          userId: user.id,
+          amount: totalPrice,
+          method: 'card',
+          status: 'pending',
         },
       })
 
@@ -148,6 +159,14 @@ export async function POST(req: Request) {
           data: { points: { increment: pointsEarned } },
         })
       }
+
+      await tx.activity.create({
+        data: {
+          type: 'booking_created',
+          message: `${user.name} booked ${car.brand} ${car.name} (${totalDays}d, $${totalPrice})`,
+          refId: created.id,
+        },
+      })
 
       return created
     })

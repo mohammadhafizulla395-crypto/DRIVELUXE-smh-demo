@@ -12,6 +12,16 @@ import { create } from 'zustand'
  * from the main site (different layout, different navbar, different login).
  */
 
+export type AdminSection =
+  | 'dashboard'
+  | 'cars'
+  | 'bookings'
+  | 'customers'
+  | 'payments'
+  | 'complaints'
+  | 'reviews'
+  | 'settings'
+
 export type ViewName =
   // main site
   | 'home'
@@ -31,7 +41,15 @@ export type ViewName =
   | 'cookies'
   // admin portal (separated)
   | 'admin-login'
-  | 'admin'
+  | 'admin' // = admin dashboard
+  | 'admin-cars'
+  | 'admin-bookings'
+  | 'admin-customers'
+  | 'admin-payments'
+  | 'admin-complaints'
+  | 'admin-reviews'
+  | 'admin-settings'
+  | 'admin-forbidden'
   // errors
   | 'not-found'
 
@@ -80,7 +98,23 @@ function viewToHash(view: ViewName, carId?: string | null): string {
     case 'admin-login':
       return '#/admin/login'
     case 'admin':
-      return '#/admin'
+      return '#/admin/dashboard'
+    case 'admin-cars':
+      return '#/admin/cars'
+    case 'admin-bookings':
+      return '#/admin/bookings'
+    case 'admin-customers':
+      return '#/admin/customers'
+    case 'admin-payments':
+      return '#/admin/payments'
+    case 'admin-complaints':
+      return '#/admin/complaints'
+    case 'admin-reviews':
+      return '#/admin/reviews'
+    case 'admin-settings':
+      return '#/admin/settings'
+    case 'admin-forbidden':
+      return '#/admin/forbidden'
     case 'not-found':
       return '#/not-found'
     default:
@@ -114,6 +148,15 @@ function parseHash(): { view: ViewName; carId: string | null } {
   if (first === 'cookies') return { view: 'cookies', carId: null }
   if (first === 'admin') {
     if (second === 'login') return { view: 'admin-login', carId: null }
+    if (second === 'forbidden') return { view: 'admin-forbidden', carId: null }
+    if (second === 'cars') return { view: 'admin-cars', carId: null }
+    if (second === 'bookings') return { view: 'admin-bookings', carId: null }
+    if (second === 'customers') return { view: 'admin-customers', carId: null }
+    if (second === 'payments') return { view: 'admin-payments', carId: null }
+    if (second === 'complaints') return { view: 'admin-complaints', carId: null }
+    if (second === 'reviews') return { view: 'admin-reviews', carId: null }
+    if (second === 'settings') return { view: 'admin-settings', carId: null }
+    // bare #/admin or #/admin/dashboard → dashboard
     return { view: 'admin', carId: null }
   }
   if (first === 'not-found') return { view: 'not-found', carId: null }

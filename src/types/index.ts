@@ -28,13 +28,19 @@ export interface Car {
   description: string
   available: boolean
   featured: boolean
+  archived: boolean
   rating: number
   createdAt: string
 }
 
+// Booking workflow: Booked → Paid → Pickup → In Use → Returned → Completed
+// (cancelled can happen from booked/paid)
 export type BookingStatus =
-  | 'pending'
-  | 'confirmed'
+  | 'booked'
+  | 'paid'
+  | 'pickup'
+  | 'in_use'
+  | 'returned'
   | 'completed'
   | 'cancelled'
 
@@ -48,9 +54,11 @@ export interface Booking {
   totalPrice: number
   pickupLocation: string
   status: BookingStatus
+  archived: boolean
   createdAt: string
   car?: Pick<Car, 'id' | 'name' | 'brand' | 'image' | 'pricePerDay'>
   user?: { id: string; name: string; email: string }
+  payment?: Payment
 }
 
 export interface Review {
@@ -59,9 +67,10 @@ export interface Review {
   carId: string
   rating: number
   comment: string
+  archived: boolean
   createdAt: string
-  user?: { id: string; name: string }
-  car?: Pick<Car, 'id' | 'name' | 'brand'>
+  user?: { id: string; name: string; email: string }
+  car?: Pick<Car, 'id' | 'name' | 'brand' | 'image'>
 }
 
 export type SupportCategory =
@@ -71,6 +80,7 @@ export type SupportCategory =
   | 'payment'
   | 'other'
 
+// Complaints workflow: Open → In Progress → Resolved → Closed
 export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed'
 
 export interface SupportTicket {
@@ -80,7 +90,10 @@ export interface SupportTicket {
   category: SupportCategory
   message: string
   status: TicketStatus
+  archived: boolean
   createdAt: string
+  updatedAt: string
+  user?: { id: string; name: string; email: string }
 }
 
 export interface PointTransaction {
@@ -92,6 +105,41 @@ export interface PointTransaction {
   createdAt: string
 }
 
+// Payment workflow: Pending → Paid → Refunded
+export type PaymentStatus = 'pending' | 'paid' | 'refunded'
+
+export interface Payment {
+  id: string
+  bookingId: string
+  userId: string
+  amount: number
+  method: string
+  status: PaymentStatus
+  txnRef: string | null
+  createdAt: string
+  updatedAt: string
+  booking?: Pick<Booking, 'id' | 'startDate' | 'endDate' | 'totalPrice'>
+  user?: { id: string; name: string; email: string }
+}
+
+export type ActivityType =
+  | 'booking_created'
+  | 'booking_status'
+  | 'payment'
+  | 'complaint'
+  | 'review'
+  | 'car'
+  | 'user'
+
+export interface Activity {
+  id: string
+  type: ActivityType
+  message: string
+  actorId: string | null
+  refId: string | null
+  createdAt: string
+}
+
 export interface Pagination {
   page: number
   limit: number
@@ -99,11 +147,23 @@ export interface Pagination {
   totalPages: number
 }
 
+// Admin dashboard operational stats (no graphs — operational cards)
 export interface AdminStats {
+  bookingsToday: number
+  pendingPickups: number
+  pendingReturns: number
+  openComplaints: number
   totalCars: number
-  availableCars: number
   totalBookings: number
   totalUsers: number
   revenue: number
-  fleetByType: Record<string, number>
+}
+
+export interface UpcomingPickup {
+  id: string
+  startDate: string
+  pickupLocation: string
+  status: BookingStatus
+  user: { id: string; name: string; email: string }
+  car: { id: string; name: string; brand: string; image: string }
 }

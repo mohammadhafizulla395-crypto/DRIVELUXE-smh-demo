@@ -79,7 +79,15 @@ export const bookingSchema = z
   })
 
 export const bookingStatusSchema = z.object({
-  status: z.enum(['pending', 'confirmed', 'completed', 'cancelled']),
+  status: z.enum([
+    'booked',
+    'paid',
+    'pickup',
+    'in_use',
+    'returned',
+    'completed',
+    'cancelled',
+  ]),
 })
 
 /* ------------------------------ reviews ------------------------------ */

@@ -7,6 +7,10 @@ import type {
   SupportTicket,
   PointTransaction,
   Pagination,
+  Payment,
+  Activity,
+  AdminStats,
+  UpcomingPickup,
 } from '@/types'
 import type { CarInput } from '@/lib/validations'
 
@@ -188,24 +192,132 @@ export const pointsApi = {
 }
 
 /* ----------------------------- admin ---------------------------- */
+export interface AdminTableQuery {
+  search?: string
+  status?: string
+  sort?: string
+  page?: number
+  limit?: number
+  archived?: boolean
+  type?: string
+  transmission?: string
+  fuel?: string
+  category?: string
+  rating?: number
+  method?: string
+}
+
+function buildQuery(q: AdminTableQuery = {}): string {
+  const params = new URLSearchParams()
+  for (const [k, v] of Object.entries(q)) {
+    if (v === undefined || v === '' || v === null) continue
+    params.append(k, String(v))
+  }
+  return params.toString()
+}
+
+export interface AdminListResponse<T> {
+  [key: string]: T[] | Pagination
+  pagination: Pagination
+}
+
 export const adminApi = {
-  stats: () =>
+  // Dashboard
+  stats: () => api.get<AdminStats>('/api/admin/stats').then((r) => r.data),
+  activity: (limit = 15) =>
+    api.get<{ activities: Activity[] }>(`/api/admin/activity?limit=${limit}`).then((r) => r.data),
+  pickups: () =>
+    api.get<{ pickups: UpcomingPickup[] }>('/api/admin/pickups').then((r) => r.data),
+  settings: () =>
     api
       .get<{
-        totalCars: number
-        availableCars: number
-        totalBookings: number
-        totalUsers: number
-        revenue: number
-        fleetByType: Record<string, number>
-      }>('/api/admin/stats')
+        owner: { name: string; phone: string; email: string }
+        system: {
+          totalCars: number
+          activeBookings: number
+          totalUsers: number
+          totalRevenue: number
+          version: string
+          environment: string
+        }
+      }>('/api/admin/settings')
       .then((r) => r.data),
-  tickets: () =>
-    api
-      .get<{ tickets: Array<SupportTicket & { user?: { id: string; name: string; email: string } }> }>(
-        '/api/admin/tickets',
-      )
-      .then((r) => r.data),
-  updateTicket: (id: string, status: string) =>
-    api.patch<{ ticket: SupportTicket }>(`/api/admin/tickets/${id}`, { status }).then((r) => r.data),
+
+  // Cars
+  cars: {
+    list: (q: AdminTableQuery = {}) =>
+      api
+        .get<{ cars: Car[]; pagination: Pagination }>(`/api/admin/cars?${buildQuery(q)}`)
+        .then((r) => r.data),
+    create: (data: CarInput) =>
+      api.post<{ car: Car }>('/api/admin/cars', data).then((r) => r.data),
+    update: (id: string, data: CarInput) =>
+      api.put<{ car: Car }>(`/api/admin/cars/${id}`, data).then((r) => r.data),
+    archive: (id: string, archived: boolean) =>
+      api.patch<{ car: Car }>(`/api/admin/cars/${id}`, { archived }).then((r) => r.data),
+    bulk: (ids: string[], action: string) =>
+      api.post<{ updated: number }>('/api/admin/cars/bulk', { ids, action }).then((r) => r.data),
+  },
+
+  // Bookings
+  bookings: {
+    list: (q: AdminTableQuery = {}) =>
+      api
+        .get<{ bookings: Booking[]; pagination: Pagination }>(`/api/admin/bookings?${buildQuery(q)}`)
+        .then((r) => r.data),
+    updateStatus: (id: string, status: string) =>
+      api.patch<{ booking: Booking }>(`/api/admin/bookings/${id}`, { status }).then((r) => r.data),
+    archive: (id: string, archived: boolean) =>
+      api.put<{ booking: Booking }>(`/api/admin/bookings/${id}`, { archived }).then((r) => r.data),
+    bulk: (ids: string[], action: string) =>
+      api.post<{ updated: number }>('/api/admin/bookings/bulk', { ids, action }).then((r) => r.data),
+  },
+
+  // Customers
+  customers: {
+    list: (q: AdminTableQuery = {}) =>
+      api
+        .get<{ customers: Array<Record<string, unknown>>; pagination: Pagination }>(
+          `/api/admin/customers?${buildQuery(q)}`,
+        )
+        .then((r) => r.data),
+    archive: (id: string, archived: boolean) =>
+      api.patch(`/api/admin/customers/${id}`, { archived }).then((r) => r.data),
+  },
+
+  // Payments
+  payments: {
+    list: (q: AdminTableQuery = {}) =>
+      api
+        .get<{ payments: Payment[]; pagination: Pagination }>(`/api/admin/payments?${buildQuery(q)}`)
+        .then((r) => r.data),
+    updateStatus: (id: string, status: string) =>
+      api.patch<{ payment: Payment }>(`/api/admin/payments/${id}`, { status }).then((r) => r.data),
+  },
+
+  // Complaints
+  complaints: {
+    list: (q: AdminTableQuery = {}) =>
+      api
+        .get<{ complaints: SupportTicket[]; pagination: Pagination }>(
+          `/api/admin/complaints?${buildQuery(q)}`,
+        )
+        .then((r) => r.data),
+    updateStatus: (id: string, status: string) =>
+      api.patch<{ ticket: SupportTicket }>(`/api/admin/complaints/${id}`, { status }).then((r) => r.data),
+    archive: (id: string, archived: boolean) =>
+      api.patch(`/api/admin/complaints/${id}`, { archived }).then((r) => r.data),
+    bulk: (ids: string[], action: string) =>
+      api.post<{ updated: number }>('/api/admin/complaints/bulk', { ids, action }).then((r) => r.data),
+  },
+
+  // Reviews
+  reviews: {
+    list: (q: AdminTableQuery = {}) =>
+      api
+        .get<{ reviews: Review[]; pagination: Pagination }>(`/api/admin/reviews?${buildQuery(q)}`)
+        .then((r) => r.data),
+    archive: (id: string, archived: boolean) =>
+      api.patch<{ review: Review }>(`/api/admin/reviews/${id}`, { archived }).then((r) => r.data),
+  },
 }

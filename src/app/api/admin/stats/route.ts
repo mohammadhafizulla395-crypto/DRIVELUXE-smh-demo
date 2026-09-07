@@ -4,40 +4,56 @@ import { ok, unauthorized, forbidden, handleError } from '@/lib/api-response'
 
 export const runtime = 'nodejs'
 
+/** GET /api/admin/stats — operational dashboard cards (no graphs) */
 export async function GET() {
   try {
     const user = await getUserFromRequest()
     if (!user) return unauthorized()
     if (user.role !== 'admin') return forbidden()
 
-    const [totalCars, totalBookings, totalUsers, confirmedBookings, cars] =
-      await Promise.all([
-        db.car.count(),
-        db.booking.count(),
-        db.user.count(),
-        db.booking.findMany({
-          where: { status: { in: ['confirmed', 'completed'] } },
-          select: { totalPrice: true, status: true },
-        }),
-        db.car.findMany({ select: { available: true, type: true } }),
-      ])
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
 
-    const revenue = confirmedBookings.reduce(
-      (sum, b) => sum + b.totalPrice,
-      0,
-    )
-    const availableCars = cars.filter((c) => c.available).length
+    const [
+      bookingsToday,
+      pendingPickups,
+      pendingReturns,
+      openComplaints,
+      totalCars,
+      totalBookings,
+      totalUsers,
+      paidPayments,
+    ] = await Promise.all([
+      // Bookings created today
+      db.booking.count({ where: { createdAt: { gte: today, lt: tomorrow } } }),
+      // Pending pickups: status is 'paid' or 'pickup' (customer paid, waiting for/doing pickup)
+      db.booking.count({ where: { status: { in: ['paid', 'pickup'] } } }),
+      // Pending returns: car is in use, due to be returned
+      db.booking.count({ where: { status: 'in_use' } }),
+      // Open complaints
+      db.supportTicket.count({ where: { status: { in: ['open', 'in_progress'] } } }),
+      db.car.count({ where: { archived: false } }),
+      db.booking.count({ where: { archived: false } }),
+      db.user.count({ where: { archived: false } }),
+      db.payment.findMany({
+        where: { status: 'paid' },
+        select: { amount: true },
+      }),
+    ])
 
-    const typeCount: Record<string, number> = {}
-    for (const c of cars) typeCount[c.type] = (typeCount[c.type] || 0) + 1
+    const revenue = paidPayments.reduce((sum, p) => sum + p.amount, 0)
 
     return ok({
+      bookingsToday,
+      pendingPickups,
+      pendingReturns,
+      openComplaints,
       totalCars,
-      availableCars,
       totalBookings,
       totalUsers,
       revenue: Math.round(revenue * 100) / 100,
-      fleetByType: typeCount,
     })
   } catch (err) {
     return handleError(err)

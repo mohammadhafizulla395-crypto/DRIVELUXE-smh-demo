@@ -177,3 +177,57 @@ Stage Summary:
 - All Phase 2.5 features verified working end-to-end
 - Admin complaints management added (was the only missing piece)
 - Ready for Phase 3
+
+---
+Task ID: 8-9
+Agent: full-stack-developer
+Task: Build admin Cars + Bookings sections
+
+Work Log:
+- Read worklog.md (Phase 2.5 stabilization history + admin refactor context).
+- Read existing admin-ui.tsx (AdminPageHeader, AdminTableSkeleton, AdminPagination, AdminEmptyState), admin-layout.tsx, sections/admin-dashboard.tsx for styling + patterns.
+- Read lib/api.ts (adminApi.cars.* + adminApi.bookings.* signatures), lib/validations.ts (carSchema, carTypes, transmissions, fuels, CarInput), types/index.ts (Car, Booking, BookingStatus).
+- Read API routes: admin/cars (list/create), admin/cars/[id] (GET/PUT/PATCH archive), admin/cars/bulk (archive/restore/setAvailable/setUnavailable), admin/bookings (list), admin/bookings/[id] (PATCH status with FLOW transitions, PUT archive), admin/bookings/bulk (archive/restore).
+- Read shadcn primitives: drawer, alert-dialog, select, table, checkbox, badge, switch, label, input, textarea, button.
+- Wrote src/components/admin/sections/admin-cars.tsx (export AdminCars) — toolbar (debounced search 300ms, type filter using carTypes, sort Newest/Name/Price/Year, archived toggle, Add car button); table with checkbox / Car (image+name+brand) / Type / Price/day / Seats / Status (Available/Unavailable badge) / Actions (Edit + Archive/Restore) columns; bulk bar with Archive/Restore/Set available/Set unavailable + confirm AlertDialog; AdminTableSkeleton + AdminPagination + AdminEmptyState; right-side Drawer for Add/Edit with all 14 fields (name, brand, type, transmission, fuel, seats, year, pricePerDay, image, features, description, available, featured, rating) validated via carSchema.safeParse; per-field error display with role="alert"; AlertDialog confirm for archive/restore; toast feedback via useToast.
+- Wrote src/components/admin/sections/admin-bookings.tsx (export AdminBookings) — toolbar (debounced search, status filter, sort Newest/Start/End/Price, archived toggle); table with checkbox / Customer (name+email) / Car (image+name+brand) / Dates (start → end via date-fns format) / Days / Total / Payment status badge / Booking status badge / Actions columns; inline status Select showing only FLOW-allowed next transitions (booked→paid/cancelled, paid→pickup/cancelled, pickup→in_use, in_use→returned, returned→completed, completed/cancelled = Final disabled); 400 invalid-transition errors surfaced via toast; color-coded badges per spec (booked=amber, paid=emerald, pickup=sky, in_use=violet, returned=teal, completed=zinc, cancelled=rose; payment pending=amber, paid=emerald, refunded=rose); row click opens right-side detail Drawer with customer/car/dates/price breakdown/payment/workflow timeline sections; bulk Archive/Restore with confirm AlertDialog; optimistic local state patch on status change (including payment-status patch for paid/cancelled transitions since server response omits payment); toasts via useToast.
+- Both files: 'use client', proper TS types (no `any`), cn() for conditional classes, dark operator styling (border-white/10, bg-card/40, etc.), keyboard-friendly with aria-labels on icon-only buttons and Select triggers, labels with htmlFor on switches.
+- Ran `bun run lint` — surfaced 10 pre-existing errors in admin refactor files left by previous agents (8 unused `handleError` imports in admin route.ts files, unused `ErrorData` import in admin-helpers.ts, unused `third` destructure in ui-store.ts). Fixed all 10 mechanically (sed for the 8 routes, Edit for the other 2). Re-ran lint — clean, 0 errors.
+
+Stage Summary:
+- Two production-quality admin section components written to disk:
+  - src/components/admin/sections/admin-cars.tsx (~600 lines) — full fleet management with create/edit drawer, bulk actions, archive/restore.
+  - src/components/admin/sections/admin-bookings.tsx (~700 lines) — bookings workflow with status state machine enforcement, detail drawer, bulk actions.
+- Both self-contained, typed, accessible, dark-themed, integrate with existing admin-ui primitives and adminApi client.
+- 10 pre-existing lint errors fixed in admin refactor files (not introduced by this task but blocking `bun run lint`).
+- Final lint: 0 errors, 0 warnings.
+- Components are not yet wired into the app router (page.tsx still renders the legacy AdminDashboard). Wiring is the next agent's responsibility — the new AdminLayout already references `admin-cars` / `admin-bookings` view names in NAV, so a router switch is straightforward.
+
+---
+Task ID: 2-9
+Agent: main (Phase 2.6 Admin Console Refactor)
+Task: Completely separate Admin Console from customer website; 8 sections; workflows; security; owner contact
+
+Work Log:
+- DB schema: added Payment, Activity models; archived flags on Car/Booking/User/SupportTicket/Review; new booking workflow statuses (booked→paid→pickup→in_use→returned→completed); force-reset + reseeded
+- Built admin backend: requireAdmin() guard; 11 new route files (admin/cars, bookings, customers, payments, complaints, reviews, activity, pickups, settings + [id] + bulk variants) with search/filter/sort/pagination/bulk/archive + enforced status workflows
+- Updated api.ts with comprehensive adminApi object (cars/bookings/customers/payments/complaints/reviews sub-objects + stats/activity/pickups/settings)
+- Built AdminLayout: collapsible sidebar (Cmd+[ shortcut), top search bar, breadcrumbs, dark operator UI
+- Built admin sub-router in ui-store (8 admin sections + admin-forbidden) with hash routes #/admin/{section}
+- Built all 8 admin sections: Dashboard (operational cards, no graphs), Cars (table+drawer+archive), Bookings (workflow dropdowns+detail drawer), Customers (table+detail drawer), Payments (workflow), Complaints (workflow+bulk), Reviews (moderation), Settings (owner contact)
+- Built AdminForbidden (403) page
+- Updated page.tsx router: admin views render in AdminLayout; guests redirect to admin-login; non-admins get 403
+- Security: removed "Admin Portal" link from customer footer; navbar already had none
+- Updated StatusBadge for new booking statuses; updated user-dashboard cancel logic for new statuses
+- Subagent built Cars + Bookings sections + fixed 10 pre-existing lint errors
+- Fixed all remaining lint errors (unused imports, setState-in-effect pattern)
+- Updated architecture.md (admin console section + workflows + access control table), design.md (operator UI section), memory.md (Phase 2.6)
+- Verified: curl (all 8 APIs), browser (login + 8 sections + 403), workflow transitions (full chain + invalid rejected)
+
+Stage Summary:
+- Lint: clean, 0 errors
+- All 8 admin sections verified working in browser
+- Booking workflow enforced (booked→paid→pickup→in_use→returned→completed; invalid transitions rejected)
+- 403 enforced for non-admin users
+- Owner contact (Hafizulla / 91000527275 / hafizullas58@gmail.com) on Settings page
+- Customer website unchanged

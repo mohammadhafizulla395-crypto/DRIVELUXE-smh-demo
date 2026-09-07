@@ -8,13 +8,94 @@ This is the **living status document**. Update after every completed feature.
 
 ## Current Status
 
-- **Current Phase:** Phase 2.5 (Stabilization Review) — COMPLETE & VERIFIED (Round 2)
-- **Last Updated:** Phase 2.5b — ESLint hardening + dead-code removal + admin complaints management
-- **Build State:** All audit issues fixed; lint rules re-enabled & clean; admin complaints tab added; verified end-to-end.
+- **Current Phase:** Phase 2.6 — Admin Console Refactor (Architecture Lock) — COMPLETE & VERIFIED
+- **Last Updated:** Admin console fully separated; 8 sections built; workflows enforced; owner contact added.
+- **Build State:** Lint clean; all admin APIs + sections verified via curl + browser; 403 enforced.
 
 ---
 
-## Phase 2.5b — Additional Stabilization (this round)
+## Phase 2.6 — Admin Console Refactor
+
+### What changed
+
+The admin console was rebuilt as a **completely separated application** with
+its own layout, routing, session checks, and design language. The customer
+website was not touched.
+
+### Security & separation
+
+1. **Removed "Admin Portal" link** from the customer footer (and navbar
+   never had one). Admin is accessible only via `#/admin/login`.
+2. **403 Forbidden** page for authenticated non-admin users who reach any
+   `#/admin/*` route. Guests redirect to `#/admin/login`.
+3. **`requireAdmin()` guard** on every `/api/admin/*` route — checks both
+   authentication and `role === 'admin'`. Non-admins get 403 server-side.
+4. **Separate admin login** (`/api/admin/login`) rejects non-admin accounts.
+
+### Admin layout
+
+- **Fixed collapsible sidebar** (240px ↔ 68px, `Cmd/Ctrl+[` to toggle).
+- **Top bar**: collapse toggle · breadcrumbs · quick search · notifications ·
+  admin avatar dropdown.
+- **Dark operator UI** — denser/flatter than the customer site, no
+  animations on data, no gradients.
+- **8 sidebar sections**: Dashboard, Cars, Bookings, Customers, Payments,
+  Complaints, Reviews, Settings.
+
+### Dashboard (operational, no graphs)
+
+Replaced charts with operational cards: **Bookings Today**, **Pending
+Pickups**, **Pending Returns**, **Open Complaints**. Below: secondary stats
+(cars/bookings/customers/revenue), upcoming pickups table, recent activity
+feed, quick actions grid.
+
+### Tables (every management screen)
+
+Search (debounced) · filters · sorting · pagination · bulk actions (archive/
+restore) · **archive instead of hard delete** · confirmation dialogs for
+destructive actions. Detail/edit views open in **Drawers**, not new pages.
+
+### Status workflows (enforced server-side)
+
+- **Bookings**: `booked → paid → pickup → in_use → returned → completed`
+  (cancel from booked/paid). Payment auto-syncs; cancellation refunds +
+  reverses points.
+- **Complaints**: `open → in_progress → resolved → closed`.
+- **Payments**: `pending → paid → refunded`. Paid syncs booking→paid;
+  refunded syncs booking→cancelled.
+
+### New data models
+
+- **Payment** (`bookingId`, `amount`, `method`, `status`, `txnRef`) —
+  1:1 with Booking. Created as `pending` on every booking.
+- **Activity** (`type`, `message`, `refId`) — powers the dashboard feed.
+- **`archived` flag** added to Car, Booking, User, SupportTicket, Review.
+
+### Owner contact (Settings page)
+
+- **Name:** Hafizulla
+- **Phone:** 91000527275
+- **Email:** hafizullas58@gmail.com
+
+Exposed at `/api/admin/settings` and on the Settings page with copy-to-clipboard.
+
+### Verification
+
+- ✅ `bun run lint` — clean (0 errors).
+- ✅ curl: all 8 admin list APIs return data (15 cars, 3 bookings, 1 customer,
+  3 payments, 1 complaint, 1 review, 2 upcoming pickups, settings).
+- ✅ Browser: admin login → dashboard with operational cards; all 8 sidebar
+  sections navigate and render.
+- ✅ Browser: rider login → `#/admin/dashboard` → **403 Forbidden** page.
+- ✅ Workflow: `booked→completed` rejected; full forward chain
+  `booked→paid→pickup→in_use→returned→completed` succeeds; `completed` is
+  final (rejects further transitions).
+- ✅ Non-admin rejected from `/api/admin/login` with 403.
+- ✅ Archive/restore works on cars (PATCH archived flag).
+
+---
+
+## Phase 2.5 — Stabilization Report (Round 1)
 
 ### Fixed Issues
 
