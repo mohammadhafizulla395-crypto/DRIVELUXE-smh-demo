@@ -54,25 +54,59 @@ export const carSchema = z.object({
   rating: z.coerce.number().min(0).max(5).default(4.5),
 })
 
+// Partial schema for updates (all fields optional except where it'd be invalid).
+export const carUpdateSchema = carSchema.partial()
+
 /* ------------------------------ bookings ----------------------------- */
+
+const dateField = z
+  .coerce
+  .date()
+  .refine((d) => !Number.isNaN(d.getTime()), {
+    message: 'Please provide a valid date',
+  })
 
 export const bookingSchema = z
   .object({
     carId: z.string().min(1, 'Car is required'),
-    startDate: z.string(),
-    endDate: z.string(),
+    startDate: dateField,
+    endDate: dateField,
     pickupLocation: z.string().min(2, 'Pickup location is required').max(120),
   })
-  .refine(
-    (data) => new Date(data.endDate) >= new Date(data.startDate),
-    {
-      message: 'Return date must be after the pickup date',
-      path: ['endDate'],
-    },
-  )
+  .refine((data) => data.endDate >= data.startDate, {
+    message: 'Return date must be after the pickup date',
+    path: ['endDate'],
+  })
 
 export const bookingStatusSchema = z.object({
   status: z.enum(['pending', 'confirmed', 'completed', 'cancelled']),
+})
+
+/* ------------------------------ reviews ------------------------------ */
+
+export const reviewSchema = z.object({
+  carId: z.string().min(1, 'Car is required'),
+  rating: z.coerce.number().int().min(1, 'Please select a rating').max(5),
+  comment: z.string().max(1000, 'Review is too long (max 1000 characters)').default(''),
+})
+
+/* ------------------------------ support ------------------------------ */
+
+export const supportCategories = [
+  'general',
+  'booking',
+  'refund',
+  'payment',
+  'other',
+] as const
+
+export const supportSchema = z.object({
+  subject: z.string().min(5, 'Subject must be at least 5 characters').max(120),
+  category: z.enum(supportCategories).default('general'),
+  message: z
+    .string()
+    .min(10, 'Please describe your issue (at least 10 characters)')
+    .max(2000, 'Message is too long (max 2000 characters)'),
 })
 
 /* ------------------------------- types ------------------------------- */
@@ -81,4 +115,7 @@ export type RegisterInput = z.infer<typeof registerSchema>
 export type LoginInput = z.infer<typeof loginSchema>
 export type ProfileInput = z.infer<typeof profileSchema>
 export type CarInput = z.infer<typeof carSchema>
+export type CarUpdateInput = z.infer<typeof carUpdateSchema>
 export type BookingInput = z.infer<typeof bookingSchema>
+export type ReviewInput = z.infer<typeof reviewSchema>
+export type SupportInput = z.infer<typeof supportSchema>

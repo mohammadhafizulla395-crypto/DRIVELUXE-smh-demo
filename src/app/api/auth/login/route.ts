@@ -30,6 +30,7 @@ export async function POST(req: Request) {
         email: user.email,
         role: user.role,
         phone: user.phone,
+        points: user.points,
       },
     })
   } catch (err) {

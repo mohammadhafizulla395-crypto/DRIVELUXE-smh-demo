@@ -12,7 +12,7 @@ import { carsApi } from '@/lib/api'
 import type { Car } from '@/types'
 
 export function FeaturedCars() {
-  const { setView } = useUIStore()
+  const { navigate } = useUIStore()
   const [cars, setCars] = useState<Car[]>([])
   const [loaded, setLoaded] = useState(false)
   const loading = !loaded
@@ -48,7 +48,7 @@ export function FeaturedCars() {
           />
           <Button
             variant="ghost"
-            onClick={() => setView('cars')}
+            onClick={() => navigate('cars')}
             className="self-start sm:self-auto text-primary hover:text-primary/90 hover:bg-primary/10"
           >
             View all

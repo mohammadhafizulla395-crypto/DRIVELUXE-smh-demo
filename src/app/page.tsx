@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { Loader2 } from 'lucide-react'
 import { Navbar } from '@/components/layout/navbar'
 import { Footer } from '@/components/layout/footer'
 import { LandingPage } from '@/components/landing/landing-page'
@@ -13,39 +14,69 @@ import { CarDetailView } from '@/components/cars/car-detail-view'
 import { BookingView } from '@/components/booking/booking-view'
 import { UserDashboard } from '@/components/dashboard/user-dashboard'
 import { AdminDashboard } from '@/components/dashboard/admin-dashboard'
-import { useUIStore } from '@/store/ui-store'
+import { AdminLoginForm } from '@/components/admin/admin-login-form'
+import { AdminNavbar } from '@/components/admin/admin-navbar'
+import {
+  PrivacyView,
+  TermsView,
+  CookiesView,
+  RefundView,
+} from '@/components/shared/legal-pages'
+import { NotFoundView } from '@/components/shared/not-found-view'
+import { SupportView } from '@/components/dashboard/support-view'
+import { PointsView } from '@/components/dashboard/points-view'
+import { MyReviewsView } from '@/components/dashboard/my-reviews-view'
+import { useUIStore, initHashRouter } from '@/store/ui-store'
 import { useAuthStore } from '@/store/auth-store'
-import { Loader2 } from 'lucide-react'
 
 export default function Home() {
-  const { view, selectedCarId, setView } = useUIStore()
+  const { view, selectedCarId, navigate, syncFromHash } = useUIStore()
   const { loading, hydrated, isAuthenticated, isAdmin, fetchUser } =
     useAuthStore()
 
-  // Restore session once on mount
+  // Restore session once on mount + init hash router
   useEffect(() => {
     if (!hydrated) fetchUser()
-  }, [fetchUser, hydrated])
+    initHashRouter()
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('hashchange', syncFromHash)
+      }
+    }
+  }, [])
 
   // Auth guards: redirect protected views to login
   useEffect(() => {
-    const protectedViews = ['profile', 'bookings', 'booking', 'admin']
+    const protectedViews = [
+      'profile',
+      'bookings',
+      'booking',
+      'admin',
+      'my-reviews',
+      'points',
+      'refund',
+      'support',
+      'privacy',
+      'terms',
+      'cookies',
+    ]
     if (
       protectedViews.includes(view) &&
       hydrated &&
       !isAuthenticated
     ) {
-      setView('login')
+      navigate('login')
     }
-    if (view === 'admin' && hydrated && isAuthenticated && !isAdmin) {
-      setView('home')
+    // Admin portal guard
+    if (view === 'admin' && hydrated && (!isAuthenticated || !isAdmin)) {
+      navigate('admin-login')
     }
-  }, [view, hydrated, isAuthenticated, isAdmin, setView])
+  }, [view, hydrated, isAuthenticated, isAdmin, navigate])
 
   // Scroll to top on view change
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
-  }, [view])
+    window.scrollTo({ top: 0, behavior: 'auto' })
+  }, [view, selectedCarId])
 
   // Initial session bootstrap
   if (loading && !hydrated) {
@@ -58,6 +89,30 @@ export default function Home() {
       </div>
     )
   }
+
+  // ---------- Separated Admin Portal ----------
+  // The admin portal has its own layout, navbar, and login — fully separate
+  // from the main site (no main navbar/footer).
+  if (view === 'admin-login') {
+    return <AdminLoginForm />
+  }
+
+  if (view === 'admin') {
+    if (!isAuthenticated || !isAdmin) {
+      return <AdminLoginForm />
+    }
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <AdminNavbar />
+        <main className="flex-1">
+          <AdminDashboard />
+        </main>
+      </div>
+    )
+  }
+
+  // ---------- Main Site ----------
+  const isAuthView = view === 'login' || view === 'register'
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -83,16 +138,23 @@ export default function Home() {
             {view === 'register' && <RegisterForm />}
             {view === 'profile' && isAuthenticated && <ProfileWrapper />}
             {view === 'bookings' && isAuthenticated && <UserDashboard />}
-            {view === 'admin' && isAdmin && <AdminDashboard />}
+            {view === 'my-reviews' && isAuthenticated && <MyReviewsView />}
+            {view === 'points' && isAuthenticated && <PointsView />}
+            {view === 'refund' && isAuthenticated && <RefundView />}
+            {view === 'support' && isAuthenticated && <SupportView />}
+            {view === 'privacy' && isAuthenticated && <PrivacyView />}
+            {view === 'terms' && isAuthenticated && <TermsView />}
+            {view === 'cookies' && isAuthenticated && <CookiesView />}
+            {view === 'not-found' && <NotFoundView />}
           </motion.div>
         </AnimatePresence>
       </main>
-      {view !== 'login' && view !== 'register' && <Footer />}
+      {!isAuthView && <Footer />}
     </div>
   )
 }
 
-// Standalone profile view
+// Standalone profile view (reuses the profile form)
 function ProfileWrapper() {
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pt-24">

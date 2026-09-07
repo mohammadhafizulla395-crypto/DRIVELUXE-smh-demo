@@ -1,5 +1,14 @@
 import axios from 'axios'
-import type { AuthUser, Car, Booking, Pagination } from '@/types'
+import type {
+  AuthUser,
+  Car,
+  Booking,
+  Review,
+  SupportTicket,
+  PointTransaction,
+  Pagination,
+} from '@/types'
+import type { CarInput } from '@/lib/validations'
 
 /**
  * Centralized API client.
@@ -24,9 +33,14 @@ export class ApiError extends Error {
   }
 }
 
+// Envelope type used by every API response.
+type Envelope<T> =
+  | { success: true; data: T }
+  | { success: false; error: { message: string; fields?: Record<string, string> } }
+
 api.interceptors.response.use(
   (res) => {
-    const body = res.data
+    const body = res.data as Envelope<unknown>
     if (body && typeof body === 'object' && 'success' in body) {
       if (body.success) return { ...res, data: body.data }
       throw new ApiError(
@@ -39,10 +53,16 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response) {
-      const body = error.response.data
+      const body = error.response.data as Envelope<unknown> | undefined
       const message =
-        body?.error?.message || body?.message || 'Something went wrong'
-      throw new ApiError(message, error.response.status, body?.error?.fields)
+        (body && typeof body === 'object' && 'error' in body && body.error?.message) ||
+        (body && typeof body === 'object' && 'message' in body && (body as { message?: string }).message) ||
+        'Something went wrong'
+      const fields =
+        body && typeof body === 'object' && 'error' in body
+          ? body.error?.fields
+          : undefined
+      throw new ApiError(message, error.response.status, fields)
     }
     if (error.code === 'ERR_NETWORK') {
       throw new ApiError('Network error — please check your connection.', 0)
@@ -71,6 +91,15 @@ export const authApi = {
 
   updateProfile: (data: { name: string; phone?: string }) =>
     api.patch<{ user: AuthUser }>('/api/auth/profile', data).then((r) => r.data),
+}
+
+/* --------------------------- admin auth ------------------------- */
+// Separate admin portal login — only accepts admin accounts.
+export const adminAuthApi = {
+  login: (data: { email: string; password: string }) =>
+    api
+      .post<{ user: AuthUser }>('/api/admin/login', data)
+      .then((r) => r.data),
 }
 
 /* ----------------------------- cars ----------------------------- */
@@ -102,9 +131,9 @@ export const carsApi = {
     api
       .get<{ car: Car; related: Car[] }>(`/api/cars/${id}`)
       .then((r) => r.data),
-  create: (data: Record<string, unknown>) =>
+  create: (data: CarInput) =>
     api.post<{ car: Car }>('/api/cars', data).then((r) => r.data),
-  update: (id: string, data: Record<string, unknown>) =>
+  update: (id: string, data: Partial<CarInput>) =>
     api.put<{ car: Car }>(`/api/cars/${id}`, data).then((r) => r.data),
   remove: (id: string) =>
     api.delete<{ message: string }>(`/api/cars/${id}`).then((r) => r.data),
@@ -124,6 +153,38 @@ export const bookingsApi = {
   }) => api.post<{ booking: Booking }>('/api/bookings', data).then((r) => r.data),
   updateStatus: (id: string, status: string) =>
     api.patch<{ booking: Booking }>(`/api/bookings/${id}`, { status }).then((r) => r.data),
+}
+
+/* ---------------------------- reviews --------------------------- */
+export const reviewsApi = {
+  listByCar: (carId: string) =>
+    api
+      .get<{ reviews: Review[] }>(`/api/reviews?carId=${carId}`)
+      .then((r) => r.data),
+  mine: () =>
+    api.get<{ reviews: Review[] }>('/api/reviews/mine').then((r) => r.data),
+  create: (data: { carId: string; rating: number; comment: string }) =>
+    api.post<{ review: Review }>('/api/reviews', data).then((r) => r.data),
+}
+
+/* ---------------------------- support --------------------------- */
+export const supportApi = {
+  list: () =>
+    api.get<{ tickets: SupportTicket[] }>('/api/support').then((r) => r.data),
+  create: (data: {
+    subject: string
+    category: string
+    message: string
+  }) =>
+    api.post<{ ticket: SupportTicket }>('/api/support', data).then((r) => r.data),
+}
+
+/* ----------------------------- points --------------------------- */
+export const pointsApi = {
+  mine: () =>
+    api
+      .get<{ points: number; transactions: PointTransaction[] }>('/api/points')
+      .then((r) => r.data),
 }
 
 /* ----------------------------- admin ---------------------------- */

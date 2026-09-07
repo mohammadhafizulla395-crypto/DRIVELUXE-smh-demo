@@ -6,6 +6,7 @@ export interface AuthUser {
   email: string
   role: UserRole
   phone: string | null
+  points: number
 }
 
 export type CarType = 'Sedan' | 'SUV' | 'Sports' | 'Convertible' | 'Electric'
@@ -50,6 +51,45 @@ export interface Booking {
   createdAt: string
   car?: Pick<Car, 'id' | 'name' | 'brand' | 'image' | 'pricePerDay'>
   user?: { id: string; name: string; email: string }
+}
+
+export interface Review {
+  id: string
+  userId: string
+  carId: string
+  rating: number
+  comment: string
+  createdAt: string
+  user?: { id: string; name: string }
+  car?: Pick<Car, 'id' | 'name' | 'brand'>
+}
+
+export type SupportCategory =
+  | 'general'
+  | 'booking'
+  | 'refund'
+  | 'payment'
+  | 'other'
+
+export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed'
+
+export interface SupportTicket {
+  id: string
+  userId: string
+  subject: string
+  category: SupportCategory
+  message: string
+  status: TicketStatus
+  createdAt: string
+}
+
+export interface PointTransaction {
+  id: string
+  userId: string
+  amount: number
+  reason: string
+  bookingId: string | null
+  createdAt: string
 }
 
 export interface Pagination {

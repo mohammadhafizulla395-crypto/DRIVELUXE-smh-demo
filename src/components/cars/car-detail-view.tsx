@@ -10,22 +10,24 @@ import {
   Calendar,
   Check,
   ArrowRight,
-  Loader2,
-  Star,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CarCard } from './car-card'
+import { ReviewSection } from './review-section'
 import { Stars } from '@/components/shared/stars'
 import { useUIStore } from '@/store/ui-store'
 import { useAuthStore } from '@/store/auth-store'
-import { carsApi } from '@/lib/api'
+import { carsApi, ApiError } from '@/lib/api'
+import { useToast } from '@/hooks/use-toast'
+import { parseFeatures } from '@/lib/utils'
 import type { Car } from '@/types'
 
 export function CarDetailView({ carId }: { carId: string }) {
-  const { setView } = useUIStore()
+  const { navigate } = useUIStore()
   const { isAuthenticated } = useAuthStore()
+  const { toast } = useToast()
   const [car, setCar] = useState<Car | null>(null)
   const [related, setRelated] = useState<Car[]>([])
   const [loadedId, setLoadedId] = useState('')
@@ -41,22 +43,28 @@ export function CarDetailView({ carId }: { carId: string }) {
         setRelated(res.related)
         setLoadedId(carId)
       })
-      .catch(() => {
+      .catch((err) => {
         if (!active) return
         setCar(null)
         setLoadedId(carId)
+        const e = err as ApiError
+        toast({
+          title: 'Could not load car',
+          description: e.status === 404 ? 'This car no longer exists.' : e.message,
+          variant: 'destructive',
+        })
       })
     return () => {
       active = false
     }
-  }, [carId])
+  }, [carId, toast])
 
   const handleBook = () => {
     if (!isAuthenticated) {
-      setView('login')
+      navigate('login')
       return
     }
-    setView('booking', { carId })
+    navigate('booking', { carId })
   }
 
   if (loading) {
@@ -83,21 +91,19 @@ export function CarDetailView({ carId }: { carId: string }) {
         <p className="text-muted-foreground mt-2">
           This car may have been removed.
         </p>
-        <Button className="mt-6" onClick={() => setView('cars')}>
+        <Button className="mt-6" onClick={() => navigate('cars')}>
           Back to fleet
         </Button>
       </div>
     )
   }
 
-  const features = car.features
-    ? car.features.split(',').map((f) => f.trim()).filter(Boolean)
-    : []
+  const features = parseFeatures(car.features)
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pt-24">
       <button
-        onClick={() => setView('cars')}
+        onClick={() => navigate('cars')}
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
       >
         <ArrowLeft className="h-4 w-4" /> Back to fleet
@@ -183,7 +189,7 @@ export function CarDetailView({ carId }: { carId: string }) {
                 {features.map((f) => (
                   <div key={f} className="flex items-center gap-2 text-sm">
                     <span className="grid place-items-center h-5 w-5 rounded-full bg-primary/15 text-primary">
-                      <Check className="h-3 w-3" />
+                      <Check className="h-3 w-3" aria-hidden="true" />
                     </span>
                     {f}
                   </div>
@@ -209,6 +215,7 @@ export function CarDetailView({ carId }: { carId: string }) {
               size="lg"
               disabled={!car.available}
               onClick={handleBook}
+              aria-label={`Book the ${car.brand} ${car.name} now`}
               className="bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-7"
             >
               {car.available ? (
@@ -227,6 +234,9 @@ export function CarDetailView({ carId }: { carId: string }) {
           )}
         </motion.div>
       </div>
+
+      {/* reviews */}
+      <ReviewSection carId={car.id} carName={`${car.brand} ${car.name}`} />
 
       {/* related */}
       {related.length > 0 && (
@@ -254,7 +264,9 @@ function SpecCard({
 }) {
   return (
     <div className="rounded-lg border border-white/10 bg-card/40 p-3">
-      <div className="text-primary mb-1.5">{icon}</div>
+      <div className="text-primary mb-1.5" aria-hidden="true">
+        {icon}
+      </div>
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
         {label}
       </p>

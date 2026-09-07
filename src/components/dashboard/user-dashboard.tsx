@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StatusBadge } from '@/components/shared/status-badge'
+import { StatCard } from '@/components/shared/stat-card'
 import { ProfileForm } from '@/components/auth/profile-form'
 import { bookingsApi, ApiError } from '@/lib/api'
 import { useAuthStore } from '@/store/auth-store'
@@ -35,7 +36,7 @@ import {
 
 export function UserDashboard() {
   const { user } = useAuthStore()
-  const { setView } = useUIStore()
+  const { navigate } = useUIStore()
   const { toast } = useToast()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
@@ -47,9 +48,17 @@ export function UserDashboard() {
     bookingsApi
       .list()
       .then((res) => setBookings(res.bookings))
-      .catch(() => setBookings([]))
+      .catch((err) => {
+        const e = err as ApiError
+        setBookings([])
+        toast({
+          title: 'Could not load bookings',
+          description: e.message,
+          variant: 'destructive',
+        })
+      })
       .finally(() => setLoading(false))
-  }, [])
+  }, [toast])
 
   useEffect(() => {
     load()
@@ -132,7 +141,7 @@ export function UserDashboard() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold">Booking history</h2>
-            <Button size="sm" variant="outline" onClick={() => setView('cars')}>
+            <Button size="sm" variant="outline" onClick={() => navigate('cars')}>
               <CarIcon className="h-4 w-4 mr-2" /> Book another
             </Button>
           </div>
@@ -150,7 +159,7 @@ export function UserDashboard() {
               <p className="text-sm text-muted-foreground mt-1 mb-4">
                 Browse the fleet and book your first ride.
               </p>
-              <Button onClick={() => setView('cars')}>Browse fleet</Button>
+              <Button onClick={() => navigate('cars')}>Browse fleet</Button>
             </Card>
           ) : (
             <div className="space-y-3">
@@ -250,27 +259,5 @@ export function UserDashboard() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
-}
-
-function StatCard({
-  icon,
-  label,
-  value,
-  tint,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: string
-  tint: string
-}) {
-  return (
-    <Card className="p-4 border-white/10 bg-card/50">
-      <div className={`grid place-items-center h-10 w-10 rounded-lg mb-3 ${tint}`}>
-        {icon}
-      </div>
-      <p className="text-2xl font-bold">{value}</p>
-      <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
-    </Card>
   )
 }

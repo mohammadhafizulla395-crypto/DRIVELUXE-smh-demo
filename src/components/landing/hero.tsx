@@ -8,7 +8,7 @@ import { useUIStore } from '@/store/ui-store'
 import { HeroSkeleton } from '@/components/shared/skeletons'
 
 export function Hero() {
-  const { setView } = useUIStore()
+  const { navigate } = useUIStore()
   const [imgLoaded, setImgLoaded] = useState(false)
 
   useEffect(() => {
@@ -79,7 +79,7 @@ export function Hero() {
           >
             <Button
               size="lg"
-              onClick={() => setView('cars')}
+              onClick={() => navigate('cars')}
               className="bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-7"
             >
               Browse the fleet
@@ -88,7 +88,7 @@ export function Hero() {
             <Button
               size="lg"
               variant="outline"
-              onClick={() => setView('register')}
+              onClick={() => navigate('register')}
               className="h-12 px-7 border-white/15 bg-white/5 backdrop-blur hover:bg-white/10"
             >
               Create account

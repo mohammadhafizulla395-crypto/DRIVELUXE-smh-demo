@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { getUserFromRequest } from '@/lib/auth'
-import { carSchema } from '@/lib/validations'
+import { carUpdateSchema } from '@/lib/validations'
 import {
   ok,
   handleError,
@@ -33,7 +33,7 @@ export async function GET(
   }
 }
 
-/** PUT /api/cars/[id] — admin only */
+/** PUT /api/cars/[id] — admin only (partial update) */
 export async function PUT(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -48,7 +48,7 @@ export async function PUT(
     if (!existing) return notFound('Car not found.')
 
     const body = await req.json()
-    const data = carSchema.parse(body)
+    const data = carUpdateSchema.parse(body)
 
     const car = await db.car.update({ where: { id }, data })
     return ok({ car })

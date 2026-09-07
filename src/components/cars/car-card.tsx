@@ -15,7 +15,7 @@ interface CarCardProps {
 }
 
 export function CarCard({ car, index = 0, className }: CarCardProps) {
-  const { setView } = useUIStore()
+  const { navigate } = useUIStore()
 
   const features = car.features
     ? car.features.split(',').map((f) => f.trim()).slice(0, 3)
@@ -28,7 +28,7 @@ export function CarCard({ car, index = 0, className }: CarCardProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: Math.min(index * 0.06, 0.4) }}
       whileHover={{ y: -4 }}
-      onClick={() => setView('car-detail', { carId: car.id })}
+      onClick={() => navigate('car-detail', { carId: car.id })}
       className={cn(
         'group text-left rounded-xl border border-white/10 bg-card/60 overflow-hidden',
         'hover:border-primary/40 hover:glow-gold transition-all duration-300',

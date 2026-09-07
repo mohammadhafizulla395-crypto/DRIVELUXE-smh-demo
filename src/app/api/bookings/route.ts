@@ -6,9 +6,9 @@ import {
   created,
   handleError,
   unauthorized,
-  forbidden,
   fail,
 } from '@/lib/api-response'
+import type { Prisma } from '@prisma/client'
 
 export const runtime = 'nodejs'
 
@@ -17,6 +17,9 @@ function daysBetween(start: Date, end: Date): number {
   const days = Math.round(ms / (1000 * 60 * 60 * 24))
   return Math.max(1, days)
 }
+
+// Points earned per dollar spent. 1 point per $1.
+const POINTS_PER_DOLLAR = 1
 
 /**
  * GET /api/bookings
@@ -31,7 +34,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
     const status = searchParams.get('status')
 
-    const where: Record<string, unknown> = {}
+    const where: Prisma.BookingWhereInput = {}
     if (user.role !== 'admin') where.userId = user.id
     if (status) where.status = status
 
@@ -48,9 +51,10 @@ export async function GET(req: Request) {
             pricePerDay: true,
           },
         },
-        user: user.role === 'admin'
-          ? { select: { id: true, name: true, email: true } }
-          : false,
+        user:
+          user.role === 'admin'
+            ? { select: { id: true, name: true, email: true } }
+            : false,
       },
     })
 
@@ -60,7 +64,7 @@ export async function GET(req: Request) {
   }
 }
 
-/** POST /api/bookings — create booking (overlap check) */
+/** POST /api/bookings — create booking (overlap check) + award points */
 export async function POST(req: Request) {
   try {
     const user = await getUserFromRequest()
@@ -73,14 +77,12 @@ export async function POST(req: Request) {
     if (!car) return fail('The selected car no longer exists.', 404)
     if (!car.available) return fail('This car is currently unavailable.', 400)
 
+    // The schema's refine guarantees endDate >= startDate (both valid dates).
     const startDate = new Date(data.startDate)
     const endDate = new Date(data.endDate)
     startDate.setHours(0, 0, 0, 0)
     endDate.setHours(23, 59, 59, 0)
 
-    if (endDate <= startDate) {
-      return fail('Return date must be after the pickup date.', 400)
-    }
     if (startDate < new Date(new Date().setHours(0, 0, 0, 0))) {
       return fail('Pickup date cannot be in the past.', 400)
     }
@@ -104,32 +106,53 @@ export async function POST(req: Request) {
 
     const totalDays = daysBetween(startDate, endDate)
     const totalPrice = Math.round(totalDays * car.pricePerDay * 100) / 100
+    const pointsEarned = Math.round(totalPrice * POINTS_PER_DOLLAR)
 
-    const booking = await db.booking.create({
-      data: {
-        userId: user.id,
-        carId: car.id,
-        startDate,
-        endDate,
-        totalDays,
-        totalPrice,
-        pickupLocation: data.pickupLocation,
-        status: 'confirmed',
-      },
-      include: {
-        car: {
-          select: {
-            id: true,
-            name: true,
-            brand: true,
-            image: true,
-            pricePerDay: true,
+    // Atomic: create booking + award points + record transaction.
+    const booking = await db.$transaction(async (tx) => {
+      const created = await tx.booking.create({
+        data: {
+          userId: user.id,
+          carId: car.id,
+          startDate,
+          endDate,
+          totalDays,
+          totalPrice,
+          pickupLocation: data.pickupLocation,
+          status: 'confirmed',
+        },
+        include: {
+          car: {
+            select: {
+              id: true,
+              name: true,
+              brand: true,
+              image: true,
+              pricePerDay: true,
+            },
           },
         },
-      },
+      })
+
+      if (pointsEarned > 0) {
+        await tx.pointTransaction.create({
+          data: {
+            userId: user.id,
+            amount: pointsEarned,
+            reason: `Points earned — booking for ${car.brand} ${car.name}`,
+            bookingId: created.id,
+          },
+        })
+        await tx.user.update({
+          where: { id: user.id },
+          data: { points: { increment: pointsEarned } },
+        })
+      }
+
+      return created
     })
 
-    return created({ booking })
+    return created({ booking, pointsEarned })
   } catch (err) {
     return handleError(err)
   }

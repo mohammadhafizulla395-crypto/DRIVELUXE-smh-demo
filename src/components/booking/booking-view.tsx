@@ -36,7 +36,7 @@ const LOCATIONS = [
 ]
 
 export function BookingView({ carId }: { carId: string }) {
-  const { setView } = useUIStore()
+  const { navigate } = useUIStore()
   const { toast } = useToast()
   const [car, setCar] = useState<Car | null>(null)
   const [loading, setLoading] = useState(true)
@@ -65,7 +65,7 @@ export function BookingView({ carId }: { carId: string }) {
     if (!car || !range?.from || !range?.to) return
     setSubmitting(true)
     try {
-      await bookingsApi.create({
+      const { pointsEarned } = await bookingsApi.create({
         carId: car.id,
         startDate: range.from.toISOString(),
         endDate: range.to.toISOString(),
@@ -73,9 +73,12 @@ export function BookingView({ carId }: { carId: string }) {
       })
       toast({
         title: 'Booking confirmed!',
-        description: `Your ${car.brand} ${car.name} is reserved.`,
+        description:
+          pointsEarned > 0
+            ? `Your ${car.brand} ${car.name} is reserved. You earned ${pointsEarned} points!`
+            : `Your ${car.brand} ${car.name} is reserved.`,
       })
-      setView('bookings')
+      navigate('bookings')
     } catch (err) {
       const e = err as ApiError
       toast({
@@ -100,7 +103,7 @@ export function BookingView({ carId }: { carId: string }) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-32 text-center">
         <h2 className="text-2xl font-bold">Car not found</h2>
-        <Button className="mt-6" onClick={() => setView('cars')}>
+        <Button className="mt-6" onClick={() => navigate('cars')}>
           Back to fleet
         </Button>
       </div>
@@ -110,7 +113,7 @@ export function BookingView({ carId }: { carId: string }) {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pt-24">
       <button
-        onClick={() => setView('car-detail', { carId })}
+        onClick={() => navigate('car-detail', { carId })}
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
       >
         <ArrowLeft className="h-4 w-4" /> Back to {car.name}

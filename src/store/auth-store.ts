@@ -9,6 +9,7 @@ interface AuthState {
   loading: boolean // initial session check
   hydrated: boolean
   setUser: (user: AuthUser | null) => void
+  addPoints: (amount: number) => void
   fetchUser: () => Promise<AuthUser | null>
   logout: () => Promise<void>
 }
@@ -25,6 +26,10 @@ export const useAuthStore = create<AuthState>((set) => ({
       isAuthenticated: !!user,
       isAdmin: user?.role === 'admin',
     }),
+  addPoints: (amount) =>
+    set((state) => ({
+      user: state.user ? { ...state.user, points: state.user.points + amount } : state.user,
+    })),
   fetchUser: async () => {
     try {
       const { user } = await authApi.me()

@@ -8,6 +8,7 @@ import {
   unauthorized,
   forbidden,
 } from '@/lib/api-response'
+import type { Prisma } from '@prisma/client'
 
 export const runtime = 'nodejs'
 
@@ -27,11 +28,15 @@ export async function GET(req: Request) {
     const maxPrice = searchParams.get('maxPrice')
     const sort = searchParams.get('sort') || 'newest'
     const featuredOnly = searchParams.get('featured') === 'true'
-    const page = Math.max(1, Number(searchParams.get('page') || '1'))
-    const limit = Math.min(24, Math.max(1, Number(searchParams.get('limit') || '9')))
+    const pageParam = Number(searchParams.get('page') || '1')
+    const limitParam = Number(searchParams.get('limit') || '9')
+    const page = Number.isFinite(pageParam) ? Math.max(1, Math.floor(pageParam)) : 1
+    const limit = Number.isFinite(limitParam)
+      ? Math.min(24, Math.max(1, Math.floor(limitParam)))
+      : 9
     const onlyAvailable = searchParams.get('available') !== 'false'
 
-    const where: Record<string, unknown> = {}
+    const where: Prisma.CarWhereInput = {}
     if (search) {
       where.OR = [
         { name: { contains: search } },
@@ -44,10 +49,12 @@ export async function GET(req: Request) {
     if (featuredOnly) where.featured = true
     if (onlyAvailable) where.available = true
 
-    const priceRange: Record<string, number> = {}
-    if (minPrice) priceRange.gte = Number(minPrice)
-    if (maxPrice) priceRange.lte = Number(maxPrice)
-    if (Object.keys(priceRange).length) where.pricePerDay = priceRange
+    if (minPrice || maxPrice) {
+      const range: Prisma.FloatFilter = {}
+      if (minPrice) range.gte = Number(minPrice)
+      if (maxPrice) range.lte = Number(maxPrice)
+      where.pricePerDay = range
+    }
 
     const orderBy =
       sort === 'price-asc'

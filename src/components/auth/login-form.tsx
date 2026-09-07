@@ -16,7 +16,7 @@ import { useUIStore } from '@/store/ui-store'
 
 export function LoginForm() {
   const { setUser } = useAuthStore()
-  const { setView } = useUIStore()
+  const { navigate } = useUIStore()
   const { toast } = useToast()
   const [serverError, setServerError] = useState('')
 
@@ -35,7 +35,7 @@ export function LoginForm() {
       const { user } = await authApi.login(data)
       setUser(user)
       toast({ title: `Welcome back, ${user.name.split(' ')[0]}!` })
-      setView('home')
+      navigate('home')
     } catch (err) {
       const e = err as ApiError
       if (e.status === 401) {
@@ -58,7 +58,7 @@ export function LoginForm() {
         <>
           New to DriveLuxe?{' '}
           <button
-            onClick={() => setView('register')}
+            onClick={() => navigate('register')}
             className="text-primary font-medium hover:underline"
           >
             Create an account

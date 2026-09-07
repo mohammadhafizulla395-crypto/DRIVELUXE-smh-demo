@@ -23,7 +23,7 @@ export async function POST(req: Request) {
         password,
         role: 'user',
       },
-      select: { id: true, name: true, email: true, role: true, phone: true },
+      select: { id: true, name: true, email: true, role: true, phone: true, points: true },
     })
 
     const token = signToken({ userId: user.id, role: user.role })

@@ -54,6 +54,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { StatusBadge } from '@/components/shared/status-badge'
+import { StatCard } from '@/components/shared/stat-card'
 import { carsApi, bookingsApi, adminApi, ApiError } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
 import { carTypes, transmissions, fuels } from '@/lib/validations'
@@ -64,7 +65,7 @@ const STATUSES = ['pending', 'confirmed', 'completed', 'cancelled'] as const
 
 export function AdminDashboard() {
   const { toast } = useToast()
-  const { setView } = useUIStore()
+  const { navigate } = useUIStore()
   const [stats, setStats] = useState<{
     totalCars: number
     availableCars: number
@@ -89,13 +90,19 @@ export function AdminDashboard() {
         setCars(c.cars)
         setBookings(b.bookings)
       })
-      .catch(() => {
+      .catch((err) => {
+        const e = err as ApiError
         setStats(null)
         setCars([])
         setBookings([])
+        toast({
+          title: 'Could not load dashboard',
+          description: e.message,
+          variant: 'destructive',
+        })
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [toast])
 
   useEffect(() => {
     load()
@@ -154,25 +161,25 @@ export function AdminDashboard() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-8 mb-10">
-        <Kpi
+        <StatCard
           icon={<CarIcon className="h-5 w-5" />}
           label="Total cars"
           value={stats ? String(stats.totalCars) : '—'}
           tint="text-amber-300 bg-amber-500/10"
         />
-        <Kpi
+        <StatCard
           icon={<CalendarCheck className="h-5 w-5" />}
           label="Total bookings"
           value={stats ? String(stats.totalBookings) : '—'}
           tint="text-sky-300 bg-sky-500/10"
         />
-        <Kpi
+        <StatCard
           icon={<Users className="h-5 w-5" />}
           label="Users"
           value={stats ? String(stats.totalUsers) : '—'}
           tint="text-emerald-300 bg-emerald-500/10"
         />
-        <Kpi
+        <StatCard
           icon={<CircleDollarSign className="h-5 w-5" />}
           label="Revenue"
           value={stats ? `$${Math.round(stats.revenue)}` : '—'}
@@ -207,11 +214,11 @@ export function AdminDashboard() {
                 <table className="w-full text-sm">
                   <thead className="bg-muted/30 text-muted-foreground">
                     <tr>
-                      <th className="text-left font-medium px-4 py-3">Car</th>
-                      <th className="text-left font-medium px-4 py-3 hidden md:table-cell">Type</th>
-                      <th className="text-left font-medium px-4 py-3 hidden sm:table-cell">Price/day</th>
-                      <th className="text-left font-medium px-4 py-3 hidden lg:table-cell">Status</th>
-                      <th className="text-right font-medium px-4 py-3">Actions</th>
+                      <th scope="col" className="text-left font-medium px-4 py-3">Car</th>
+                      <th scope="col" className="text-left font-medium px-4 py-3 hidden md:table-cell">Type</th>
+                      <th scope="col" className="text-left font-medium px-4 py-3 hidden sm:table-cell">Price/day</th>
+                      <th scope="col" className="text-left font-medium px-4 py-3 hidden lg:table-cell">Status</th>
+                      <th scope="col" className="text-right font-medium px-4 py-3">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -302,11 +309,11 @@ export function AdminDashboard() {
                 <table className="w-full text-sm">
                   <thead className="bg-muted/30 text-muted-foreground">
                     <tr>
-                      <th className="text-left font-medium px-4 py-3">Customer</th>
-                      <th className="text-left font-medium px-4 py-3 hidden md:table-cell">Car</th>
-                      <th className="text-left font-medium px-4 py-3 hidden lg:table-cell">Dates</th>
-                      <th className="text-left font-medium px-4 py-3 hidden sm:table-cell">Total</th>
-                      <th className="text-left font-medium px-4 py-3">Status</th>
+                      <th scope="col" className="text-left font-medium px-4 py-3">Customer</th>
+                      <th scope="col" className="text-left font-medium px-4 py-3 hidden md:table-cell">Car</th>
+                      <th scope="col" className="text-left font-medium px-4 py-3 hidden lg:table-cell">Dates</th>
+                      <th scope="col" className="text-left font-medium px-4 py-3 hidden sm:table-cell">Total</th>
+                      <th scope="col" className="text-left font-medium px-4 py-3">Status</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -408,33 +415,11 @@ export function AdminDashboard() {
       </AlertDialog>
 
       <div className="mt-10 text-center">
-        <Button variant="ghost" onClick={() => setView('cars')}>
+        <Button variant="ghost" onClick={() => navigate('cars')}>
           Back to fleet
         </Button>
       </div>
     </div>
-  )
-}
-
-function Kpi({
-  icon,
-  label,
-  value,
-  tint,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: string
-  tint: string
-}) {
-  return (
-    <Card className="p-4 border-white/10 bg-card/50">
-      <div className={`grid place-items-center h-10 w-10 rounded-lg mb-3 ${tint}`}>
-        {icon}
-      </div>
-      <p className="text-2xl font-bold">{value}</p>
-      <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
-    </Card>
   )
 }
 

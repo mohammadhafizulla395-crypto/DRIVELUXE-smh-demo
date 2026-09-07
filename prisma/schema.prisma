@@ -11,15 +11,19 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String
-  phone     String?
-  role      String   @default("user") // "user" | "admin"
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  bookings  Booking[]
+  id               String             @id @default(cuid())
+  name             String
+  email            String             @unique
+  password         String
+  phone            String?
+  role             String             @default("user") // "user" | "admin"
+  points           Int                @default(0)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  bookings         Booking[]
+  reviews          Review[]
+  supportTickets   SupportTicket[]
+  pointTransactions PointTransaction[]
 }
 
 model Car {
@@ -41,6 +45,7 @@ model Car {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   bookings     Booking[]
+  reviews      Review[]
 }
 
 model Booking {
@@ -52,11 +57,50 @@ model Booking {
   totalDays      Int
   totalPrice     Float
   pickupLocation String   @default("Downtown Office")
-  status         String   @default("pending") // pending | confirmed | completed | cancelled
+  status         String   @default("confirmed") // pending | confirmed | completed | cancelled
   createdAt      DateTime @default(now())
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   car            Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
 
   @@index([carId, startDate, endDate])
+  @@index([userId])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  carId     String
+  rating    Int // 1-5
+  comment   String   @default("")
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  car       Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, carId]) // one review per user per car
+  @@index([carId])
+}
+
+model SupportTicket {
+  id        String   @id @default(cuid())
+  userId    String
+  subject   String
+  category  String   @default("general") // general | booking | refund | payment | other
+  message   String
+  status    String   @default("open") // open | in_progress | resolved | closed
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PointTransaction {
+  id        String   @id @default(cuid())
+  userId    String
+  amount    Int // positive = earned, negative = redeemed
+  reason    String
+  bookingId String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
 }

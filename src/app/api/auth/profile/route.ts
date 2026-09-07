@@ -19,7 +19,7 @@ export async function PATCH(req: Request) {
         name: data.name,
         phone: data.phone ? data.phone : null,
       },
-      select: { id: true, name: true, email: true, role: true, phone: true },
+      select: { id: true, name: true, email: true, role: true, phone: true, points: true },
     })
 
     return ok({ user: updated })

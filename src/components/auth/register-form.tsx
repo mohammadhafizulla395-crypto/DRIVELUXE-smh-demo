@@ -16,7 +16,7 @@ import { useUIStore } from '@/store/ui-store'
 
 export function RegisterForm() {
   const { setUser } = useAuthStore()
-  const { setView } = useUIStore()
+  const { navigate } = useUIStore()
   const { toast } = useToast()
   const [serverError, setServerError] = useState('')
 
@@ -34,15 +34,15 @@ export function RegisterForm() {
     try {
       const { user } = await authApi.register(data)
       setUser(user)
-      toast({ title: 'Welcome to DriveLuxe!', description: `Account created for ${user.name}.` })
-      setView('home')
+      toast({
+        title: 'Welcome to DriveLuxe!',
+        description: `Account created for ${user.name}.`,
+      })
+      navigate('home')
     } catch (err) {
       const e = err as ApiError
-      if (e.status === 409) {
-        setServerError(e.message)
-      } else if (e.fields) {
-        setServerError(e.message)
-      } else {
+      setServerError(e.message)
+      if (!e.fields && e.status !== 409) {
         toast({
           title: 'Could not create account',
           description: e.message,
@@ -60,7 +60,7 @@ export function RegisterForm() {
         <>
           Already have an account?{' '}
           <button
-            onClick={() => setView('login')}
+            onClick={() => navigate('login')}
             className="text-primary font-medium hover:underline"
           >
             Log in
@@ -75,10 +75,11 @@ export function RegisterForm() {
           </div>
         )}
 
-        <Field label="Full name" error={errors.name?.message}>
+        <Field id="name" label="Full name" error={errors.name?.message}>
           <div className="relative">
-            <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
             <Input
+              id="name"
               {...register('name')}
               placeholder="Alex Rider"
               autoComplete="name"
@@ -87,10 +88,11 @@ export function RegisterForm() {
           </div>
         </Field>
 
-        <Field label="Email" error={errors.email?.message}>
+        <Field id="email" label="Email" error={errors.email?.message}>
           <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
             <Input
+              id="email"
               {...register('email')}
               type="email"
               placeholder="you@example.com"
@@ -100,10 +102,11 @@ export function RegisterForm() {
           </div>
         </Field>
 
-        <Field label="Password" error={errors.password?.message}>
+        <Field id="password" label="Password" error={errors.password?.message}>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
             <Input
+              id="password"
               {...register('password')}
               type="password"
               placeholder="At least 6 characters"
@@ -113,10 +116,15 @@ export function RegisterForm() {
           </div>
         </Field>
 
-        <Field label="Confirm password" error={errors.confirmPassword?.message}>
+        <Field
+          id="confirmPassword"
+          label="Confirm password"
+          error={errors.confirmPassword?.message}
+        >
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
             <Input
+              id="confirmPassword"
               {...register('confirmPassword')}
               type="password"
               placeholder="Re-enter your password"
@@ -141,8 +149,8 @@ export function RegisterForm() {
         </Button>
 
         <p className="text-xs text-muted-foreground text-center">
-          Try the demo admin: <span className="text-foreground">admin@driveluxe.com</span> /{' '}
-          <span className="text-foreground">admin123</span>
+          Try the demo user: <span className="text-foreground">rider@driveluxe.com</span> /{' '}
+          <span className="text-foreground">rider123</span>
         </p>
       </form>
     </AuthShell>
@@ -150,19 +158,25 @@ export function RegisterForm() {
 }
 
 function Field({
+  id,
   label,
   error,
   children,
 }: {
+  id: string
   label: string
   error?: string
   children: React.ReactNode
 }) {
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={label}>{label}</Label>
+      <Label htmlFor={id}>{label}</Label>
       {children}
-      {error && <p className="text-xs text-rose-300">{error}</p>}
+      {error && (
+        <p className="text-xs text-rose-300" role="alert">
+          {error}
+        </p>
+      )}
     </div>
   )
 }

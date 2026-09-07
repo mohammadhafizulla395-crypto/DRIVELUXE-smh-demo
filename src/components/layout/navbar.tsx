@@ -1,17 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
 import {
   Menu,
-  X,
   Car,
-  LayoutDashboard,
   User as UserIcon,
   LogOut,
   CalendarCheck,
-  Shield,
+  Star,
+  Gift,
+  LifeBuoy,
+  FileText,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -34,14 +33,9 @@ import { useAuthStore } from '@/store/auth-store'
 import { useUIStore, type ViewName } from '@/store/ui-store'
 import { cn } from '@/lib/utils'
 
-const NAV_LINKS: { label: string; view: ViewName }[] = [
-  { label: 'Home', view: 'home' },
-  { label: 'Fleet', view: 'cars' },
-]
-
 export function Navbar() {
-  const { user, isAuthenticated, isAdmin, logout } = useAuthStore()
-  const { view, setView } = useUIStore()
+  const { user, isAuthenticated, logout } = useAuthStore()
+  const { view, navigate } = useUIStore()
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -53,13 +47,13 @@ export function Navbar() {
   }, [])
 
   const go = (v: ViewName) => {
-    setView(v)
+    navigate(v)
     setMobileOpen(false)
   }
 
   const handleLogout = async () => {
     await logout()
-    setView('home')
+    navigate('home')
   }
 
   const initials = user
@@ -70,6 +64,21 @@ export function Navbar() {
         .join('')
         .toUpperCase()
     : ''
+
+  // Guests see only Home + Fleet. Logged-in users see the full menu.
+  const navLinks: { label: string; view: ViewName }[] = isAuthenticated
+    ? [
+        { label: 'Home', view: 'home' },
+        { label: 'Fleet', view: 'cars' },
+        { label: 'My Bookings', view: 'bookings' },
+        { label: 'Reviews', view: 'my-reviews' },
+        { label: 'Points', view: 'points' },
+        { label: 'Support', view: 'support' },
+      ]
+    : [
+        { label: 'Home', view: 'home' },
+        { label: 'Fleet', view: 'cars' },
+      ]
 
   return (
     <header
@@ -96,8 +105,8 @@ export function Navbar() {
         </button>
 
         {/* Desktop nav */}
-        <div className="hidden md:flex items-center gap-1">
-          {NAV_LINKS.map((link) => (
+        <div className="hidden lg:flex items-center gap-1">
+          {navLinks.map((link) => (
             <button
               key={link.view}
               onClick={() => go(link.view)}
@@ -111,37 +120,10 @@ export function Navbar() {
               {link.label}
             </button>
           ))}
-          {isAuthenticated && (
-            <button
-              onClick={() => go('bookings')}
-              className={cn(
-                'px-3 py-2 text-sm font-medium rounded-md transition-colors',
-                view === 'bookings'
-                  ? 'text-foreground'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              My Bookings
-            </button>
-          )}
-          {isAdmin && (
-            <button
-              onClick={() => go('admin')}
-              className={cn(
-                'px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1.5',
-                view === 'admin'
-                  ? 'text-foreground'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              <Shield className="h-3.5 w-3.5" />
-              Admin
-            </button>
-          )}
         </div>
 
         {/* Desktop auth */}
-        <div className="hidden md:flex items-center gap-2">
+        <div className="hidden lg:flex items-center gap-2">
           {isAuthenticated && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -151,7 +133,7 @@ export function Navbar() {
                       {initials}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-sm font-medium max-w-[120px] truncate">
+                  <span className="text-sm font-medium max-w-[100px] truncate">
                     {user.name.split(' ')[0]}
                   </span>
                 </button>
@@ -175,11 +157,28 @@ export function Navbar() {
                 <DropdownMenuItem onClick={() => go('bookings')}>
                   <CalendarCheck className="mr-2 h-4 w-4" /> My Bookings
                 </DropdownMenuItem>
-                {isAdmin && (
-                  <DropdownMenuItem onClick={() => go('admin')}>
-                    <LayoutDashboard className="mr-2 h-4 w-4" /> Admin Dashboard
-                  </DropdownMenuItem>
-                )}
+                <DropdownMenuItem onClick={() => go('my-reviews')}>
+                  <Star className="mr-2 h-4 w-4" /> My Reviews
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => go('points')}>
+                  <Gift className="mr-2 h-4 w-4" /> Points
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => go('refund')}>
+                  <FileText className="mr-2 h-4 w-4" /> Refund Policy
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => go('privacy')}>
+                  <FileText className="mr-2 h-4 w-4" /> Privacy
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => go('terms')}>
+                  <FileText className="mr-2 h-4 w-4" /> Terms
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => go('cookies')}>
+                  <FileText className="mr-2 h-4 w-4" /> Cookies
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => go('support')}>
+                  <LifeBuoy className="mr-2 h-4 w-4" /> Help & Support
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={handleLogout}
@@ -211,7 +210,7 @@ export function Navbar() {
         </div>
 
         {/* Mobile trigger */}
-        <div className="md:hidden">
+        <div className="lg:hidden">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" aria-label="Open menu">
@@ -220,7 +219,7 @@ export function Navbar() {
             </SheetTrigger>
             <SheetContent
               side="right"
-              className="w-[280px] bg-background border-white/10"
+              className="w-[min(300px,85vw)] bg-background border-white/10"
             >
               <SheetHeader>
                 <SheetTitle className="flex items-center gap-2">
@@ -231,7 +230,7 @@ export function Navbar() {
                 </SheetTitle>
               </SheetHeader>
               <div className="mt-6 flex flex-col gap-1">
-                {NAV_LINKS.map((link) => (
+                {navLinks.map((link) => (
                   <MobileLink
                     key={link.view}
                     active={view === link.view}
@@ -240,23 +239,6 @@ export function Navbar() {
                     {link.label}
                   </MobileLink>
                 ))}
-                {isAuthenticated && (
-                  <MobileLink
-                    active={view === 'bookings'}
-                    onClick={() => go('bookings')}
-                  >
-                    My Bookings
-                  </MobileLink>
-                )}
-                {isAdmin && (
-                  <MobileLink
-                    active={view === 'admin'}
-                    onClick={() => go('admin')}
-                    icon={<Shield className="h-4 w-4" />}
-                  >
-                    Admin
-                  </MobileLink>
-                )}
               </div>
               <div className="mt-auto pt-6 border-t border-white/10 space-y-2">
                 {isAuthenticated && user ? (
@@ -266,14 +248,30 @@ export function Navbar() {
                       <p className="text-xs text-muted-foreground truncate">
                         {user.email}
                       </p>
+                      <p className="text-xs text-primary mt-1">
+                        {user.points} points
+                      </p>
                     </div>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start"
-                      onClick={() => go('profile')}
-                    >
-                      <UserIcon className="mr-2 h-4 w-4" /> Profile
-                    </Button>
+                    <div className="grid grid-cols-2 gap-1">
+                      <Button variant="outline" size="sm" onClick={() => go('profile')}>
+                        <UserIcon className="h-4 w-4" /> Profile
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => go('refund')}>
+                        <FileText className="h-4 w-4" /> Refund
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => go('privacy')}>
+                        Privacy
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => go('terms')}>
+                        Terms
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => go('cookies')}>
+                        Cookies
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => go('support')}>
+                        <LifeBuoy className="h-4 w-4" /> Support
+                      </Button>
+                    </div>
                     <Button
                       variant="outline"
                       className="w-full justify-start text-rose-300 border-rose-500/30 hover:bg-rose-500/10"
@@ -312,12 +310,10 @@ function MobileLink({
   children,
   active,
   onClick,
-  icon,
 }: {
   children: React.ReactNode
   active?: boolean
   onClick: () => void
-  icon?: React.ReactNode
 }) {
   return (
     <button
@@ -329,7 +325,6 @@ function MobileLink({
           : 'text-muted-foreground hover:text-foreground hover:bg-white/5',
       )}
     >
-      {icon}
       {children}
     </button>
   )

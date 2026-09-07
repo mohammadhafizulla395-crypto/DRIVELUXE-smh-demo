@@ -123,7 +123,7 @@ const cars: CarSeed[] = [
     rating: 4.6,
   },
   {
-    name: 'G80',
+    name: 'GV80',
     brand: 'Genesis',
     type: 'SUV',
     transmission: 'Automatic',
@@ -331,6 +331,102 @@ async function main() {
     console.log(`✅ Created ${cars.length} cars`)
   } else {
     console.log(`ℹ️  Cars already exist (${carCount}), skipping`)
+  }
+
+  // Sample bookings + points + reviews for the demo user (idempotent)
+  const demoUser = await db.user.findUnique({ where: { email: demoEmail } })
+  const firstCar = await db.car.findFirst({ orderBy: { createdAt: 'asc' } })
+  const thirdCar = await db.car.findMany({ take: 3, orderBy: { createdAt: 'asc' } })
+  const reviewCar = thirdCar[2] ?? firstCar
+
+  if (demoUser && firstCar && (await db.booking.count()) === 0) {
+    const start1 = new Date()
+    start1.setDate(start1.getDate() + 5)
+    const end1 = new Date(start1)
+    end1.setDate(end1.getDate() + 2)
+    const days1 = 3
+    const price1 = Math.round(days1 * firstCar.pricePerDay * 100) / 100
+    const points1 = Math.round(price1)
+
+    const booking1 = await db.booking.create({
+      data: {
+        userId: demoUser.id,
+        carId: firstCar.id,
+        startDate: start1,
+        endDate: end1,
+        totalDays: days1,
+        totalPrice: price1,
+        pickupLocation: 'Downtown Office',
+        status: 'confirmed',
+      },
+    })
+
+    await db.pointTransaction.create({
+      data: {
+        userId: demoUser.id,
+        amount: points1,
+        reason: `Points earned — booking for ${firstCar.brand} ${firstCar.name}`,
+        bookingId: booking1.id,
+      },
+    })
+    await db.user.update({
+      where: { id: demoUser.id },
+      data: { points: { increment: points1 } },
+    })
+
+    // A completed past booking
+    const start2 = new Date()
+    start2.setDate(start2.getDate() - 14)
+    const end2 = new Date(start2)
+    end2.setDate(end2.getDate() + 1)
+    const days2 = 2
+    const price2 = Math.round(days2 * firstCar.pricePerDay * 100) / 100
+    const points2 = Math.round(price2)
+
+    const booking2 = await db.booking.create({
+      data: {
+        userId: demoUser.id,
+        carId: firstCar.id,
+        startDate: start2,
+        endDate: end2,
+        totalDays: days2,
+        totalPrice: price2,
+        pickupLocation: 'Airport Terminal',
+        status: 'completed',
+      },
+    })
+    await db.pointTransaction.create({
+      data: {
+        userId: demoUser.id,
+        amount: points2,
+        reason: `Points earned — booking for ${firstCar.brand} ${firstCar.name}`,
+        bookingId: booking2.id,
+      },
+    })
+    await db.user.update({
+      where: { id: demoUser.id },
+      data: { points: { increment: points2 } },
+    })
+
+    console.log('✅ Created sample bookings + points for demo user')
+  }
+
+  // Sample review from the demo user
+  if (
+    demoUser &&
+    reviewCar &&
+    (await db.review.count()) === 0
+  ) {
+    await db.review.create({
+      data: {
+        userId: demoUser.id,
+        carId: reviewCar.id,
+        rating: 5,
+        comment:
+          'Absolutely brilliant experience. The car was immaculate and pickup was effortless. This is how rentals should work.',
+      },
+    })
+    console.log('✅ Created sample review')
   }
 
   console.log('🎉 Seed complete!')

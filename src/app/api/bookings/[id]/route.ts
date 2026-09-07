@@ -9,6 +9,7 @@ import {
   forbidden,
   fail,
 } from '@/lib/api-response'
+import type { Prisma } from '@prisma/client'
 
 export const runtime = 'nodejs'
 
@@ -41,11 +42,43 @@ export async function PATCH(
       if (booking.status === 'completed') {
         return fail('Completed bookings cannot be cancelled.', 400)
       }
+      if (booking.status === 'cancelled') {
+        return fail('This booking is already cancelled.', 400)
+      }
     }
 
-    const updated = await db.booking.update({
-      where: { id },
-      data: { status },
+    // If cancelling a previously-confirmed booking, refund the awarded points.
+    const wasActive = booking.status === 'confirmed' || booking.status === 'pending'
+    const isCancelling = status === 'cancelled'
+
+    const updated = await db.$transaction(async (tx) => {
+      const updatedBooking = await tx.booking.update({
+        where: { id },
+        data: { status },
+      })
+
+      if (wasActive && isCancelling) {
+        // Reverse the points earned for this booking.
+        const txn = await tx.pointTransaction.findFirst({
+          where: { bookingId: booking.id, amount: { gt: 0 } },
+        })
+        if (txn) {
+          await tx.pointTransaction.create({
+            data: {
+              userId: booking.userId,
+              amount: -txn.amount,
+              reason: `Points reversed — booking cancelled`,
+              bookingId: booking.id,
+            },
+          })
+          await tx.user.update({
+            where: { id: booking.userId },
+            data: { points: { decrement: txn.amount } },
+          })
+        }
+      }
+
+      return updatedBooking
     })
 
     return ok({ booking: updated })
@@ -53,3 +86,6 @@ export async function PATCH(
     return handleError(err)
   }
 }
+
+// satisfy Prisma type import for typed where-clauses if needed later
+export type _BookingWhere = Prisma.BookingWhereInput

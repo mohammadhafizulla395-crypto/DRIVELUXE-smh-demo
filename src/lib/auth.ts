@@ -2,17 +2,37 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { cookies } from 'next/headers'
 import { db } from './db'
-import { fail, unauthorized, forbidden } from './api-response'
+import type { UserRole } from '@/types'
 
 const COOKIE_NAME = 'driveluxe_token'
 const TOKEN_TTL_DAYS = 7
 
-export const JWT_SECRET =
-  process.env.JWT_SECRET || 'driveluxe-dev-secret-change-in-production'
+// In production, a missing JWT_SECRET must fail loudly. In dev, fall back.
+export const JWT_SECRET = (() => {
+  const secret = process.env.JWT_SECRET
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'JWT_SECRET environment variable is required in production.',
+      )
+    }
+    return 'driveluxe-dev-secret-change-in-production'
+  }
+  return secret
+})()
 
 export interface JwtPayload {
   userId: string
-  role: string
+  role: UserRole
+}
+
+export interface AuthUser {
+  id: string
+  name: string
+  email: string
+  role: UserRole
+  phone: string | null
+  points: number
 }
 
 /* ------------------------------ password ------------------------------ */
@@ -69,14 +89,6 @@ export async function getTokenFromCookie(): Promise<string | undefined> {
 
 /* ------------------------- request helpers ---------------------------- */
 
-export type AuthUser = {
-  id: string
-  name: string
-  email: string
-  role: string
-  phone: string | null
-}
-
 /**
  * Reads the JWT from the httpOnly cookie, verifies it, and returns the user.
  * Returns null when unauthenticated / token invalid.
@@ -88,40 +100,14 @@ export async function getUserFromRequest(): Promise<AuthUser | null> {
   if (!payload) return null
   const user = await db.user.findUnique({
     where: { id: payload.userId },
-    select: { id: true, name: true, email: true, role: true, phone: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      phone: true,
+      points: true,
+    },
   })
   return user
-}
-
-/** Throws-friendly guard: returns user or null. Use with `requireUser`. */
-export async function requireUser(): Promise<AuthUser> {
-  const user = await getUserFromRequest()
-  if (!user) {
-    const err = new Error('You must be logged in to do that.') as Error & {
-      status?: number
-    }
-    err.status = 401
-    throw err
-  }
-  return user
-}
-
-export async function requireAdmin(): Promise<AuthUser> {
-  const user = await requireUser()
-  if (user.role !== 'admin') {
-    const err = new Error('You do not have permission to do that.') as Error & {
-      status?: number
-    }
-    err.status = 403
-    throw err
-  }
-  return user
-}
-
-/** Convert thrown auth errors (with .status) into a proper response. */
-export function authErrorResponse(err: unknown) {
-  const e = err as Error & { status?: number }
-  if (e?.status === 401) return unauthorized(e.message)
-  if (e?.status === 403) return forbidden(e.message)
-  return fail(e?.message || 'Authentication error.', e?.status || 400)
 }

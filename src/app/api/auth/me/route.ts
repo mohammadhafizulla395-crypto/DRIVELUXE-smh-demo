@@ -1,10 +1,14 @@
 import { getUserFromRequest } from '@/lib/auth'
-import { ok, unauthorized } from '@/lib/api-response'
+import { ok, unauthorized, handleError } from '@/lib/api-response'
 
 export const runtime = 'nodejs'
 
 export async function GET() {
-  const user = await getUserFromRequest()
-  if (!user) return unauthorized('Not authenticated.')
-  return ok({ user })
+  try {
+    const user = await getUserFromRequest()
+    if (!user) return unauthorized('Not authenticated.')
+    return ok({ user })
+  } catch (err) {
+    return handleError(err)
+  }
 }
