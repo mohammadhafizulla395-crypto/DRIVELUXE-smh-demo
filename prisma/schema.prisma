@@ -1,0 +1,62 @@
+// DriveLuxe — Premium Car Rental Platform
+// Prisma schema (SQLite). Lists stored as comma-separated strings.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  phone     String?
+  role      String   @default("user") // "user" | "admin"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  bookings  Booking[]
+}
+
+model Car {
+  id           String   @id @default(cuid())
+  name         String
+  brand        String
+  type         String // Sedan | SUV | Sports | Convertible | Electric
+  transmission String   @default("Automatic") // Automatic | Manual
+  fuel         String   @default("Petrol") // Petrol | Diesel | Electric | Hybrid
+  seats        Int      @default(5)
+  year         Int      @default(2024)
+  pricePerDay  Float
+  image        String
+  features     String   @default("") // comma-separated
+  description  String   @default("")
+  available    Boolean  @default(true)
+  featured     Boolean  @default(false)
+  rating       Float    @default(4.5)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  bookings     Booking[]
+}
+
+model Booking {
+  id             String   @id @default(cuid())
+  userId         String
+  carId          String
+  startDate      DateTime
+  endDate        DateTime
+  totalDays      Int
+  totalPrice     Float
+  pickupLocation String   @default("Downtown Office")
+  status         String   @default("pending") // pending | confirmed | completed | cancelled
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  car            Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
+
+  @@index([carId, startDate, endDate])
+  @@index([userId])
+}
