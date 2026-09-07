@@ -5,7 +5,6 @@ import { motion } from 'framer-motion'
 import { format, differenceInCalendarDays, isBefore, startOfDay } from 'date-fns'
 import {
   ArrowLeft,
-  ArrowRight,
   Loader2,
   MapPin,
   Calendar as CalendarIcon,
@@ -13,8 +12,6 @@ import {
 } from 'lucide-react'
 import { Calendar } from '@/components/ui/calendar'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,

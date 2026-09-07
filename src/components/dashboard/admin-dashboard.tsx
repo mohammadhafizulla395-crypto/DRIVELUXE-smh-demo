@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { motion } from 'framer-motion'
 import { format } from 'date-fns'
 import {
   Car as CarIcon,
@@ -14,6 +13,7 @@ import {
   Loader2,
   Shield,
   Save,
+  LifeBuoy,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -53,12 +53,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { StatusBadge } from '@/components/shared/status-badge'
 import { StatCard } from '@/components/shared/stat-card'
 import { carsApi, bookingsApi, adminApi, ApiError } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
 import { carTypes, transmissions, fuels } from '@/lib/validations'
-import type { Car, Booking } from '@/types'
+import type { Car, Booking, SupportTicket, TicketStatus } from '@/types'
 import { useUIStore } from '@/store/ui-store'
 
 const STATUSES = ['pending', 'confirmed', 'completed', 'cancelled'] as const
@@ -75,6 +74,7 @@ export function AdminDashboard() {
   } | null>(null)
   const [cars, setCars] = useState<Car[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])
+  const [tickets, setTickets] = useState<Array<SupportTicket & { user?: { id: string; name: string; email: string } }>>([])
   const [loading, setLoading] = useState(true)
 
   const [editing, setEditing] = useState<Car | null>(null)
@@ -84,17 +84,24 @@ export function AdminDashboard() {
 
   const load = useCallback(() => {
     setLoading(true)
-    Promise.all([adminApi.stats(), carsApi.list({ limit: 24 }), bookingsApi.list()])
-      .then(([s, c, b]) => {
+    Promise.all([
+      adminApi.stats(),
+      carsApi.list({ limit: 24 }),
+      bookingsApi.list(),
+      adminApi.tickets(),
+    ])
+      .then(([s, c, b, t]) => {
         setStats(s)
         setCars(c.cars)
         setBookings(b.bookings)
+        setTickets(t.tickets)
       })
       .catch((err) => {
         const e = err as ApiError
         setStats(null)
         setCars([])
         setBookings([])
+        setTickets([])
         toast({
           title: 'Could not load dashboard',
           description: e.message,
@@ -146,6 +153,19 @@ export function AdminDashboard() {
     }
   }
 
+  const handleTicketStatus = async (id: string, status: string) => {
+    try {
+      await adminApi.updateTicket(id, status)
+      setTickets((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, status: status as TicketStatus } : t)),
+      )
+      toast({ title: 'Ticket updated', description: `Marked as ${status.replace('_', ' ')}.` })
+    } catch (err) {
+      const e = err as ApiError
+      toast({ title: 'Update failed', description: e.message, variant: 'destructive' })
+    }
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pt-24">
       <div className="flex items-center gap-2 mb-2">
@@ -191,6 +211,10 @@ export function AdminDashboard() {
         <TabsList className="bg-card/50 border border-white/10">
           <TabsTrigger value="cars">Cars ({cars.length})</TabsTrigger>
           <TabsTrigger value="bookings">Bookings ({bookings.length})</TabsTrigger>
+          <TabsTrigger value="tickets">
+            <LifeBuoy className="h-3.5 w-3.5 mr-1.5" />
+            Complaints ({tickets.length})
+          </TabsTrigger>
         </TabsList>
 
         {/* Cars tab */}
@@ -371,6 +395,68 @@ export function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Complaints tab */}
+        <TabsContent value="tickets" className="mt-6">
+          <h2 className="text-xl font-semibold mb-4">Support tickets &amp; complaints</h2>
+          {loading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-20 w-full rounded-lg bg-white/5" />
+              ))}
+            </div>
+          ) : tickets.length === 0 ? (
+            <Card className="p-10 text-center border-white/10 bg-card/40">
+              <LifeBuoy className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+              <h3 className="font-semibold">No support tickets</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Customer complaints and support requests will appear here.
+              </p>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {tickets.map((t) => (
+                <div
+                  key={t.id}
+                  className="rounded-xl border border-white/10 bg-card/50 p-4"
+                >
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold">{t.subject}</h3>
+                        <Badge variant="outline" className="border-white/10 capitalize">
+                          {t.category}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {t.user?.name ?? 'Unknown'} · {t.user?.email ?? ''} ·{' '}
+                        {format(new Date(t.createdAt), 'MMM d, yyyy')}
+                      </p>
+                      <p className="text-sm text-foreground/80 mt-2 line-clamp-2">
+                        {t.message}
+                      </p>
+                    </div>
+                    <Select
+                      value={t.status}
+                      onValueChange={(v) => handleTicketStatus(t.id, v)}
+                    >
+                      <SelectTrigger className="w-[150px] h-8 bg-background/50">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(['open', 'in_progress', 'resolved', 'closed'] as const).map((s) => (
+                          <SelectItem key={s} value={s} className="capitalize">
+                            {s.replace('_', ' ')}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </TabsContent>

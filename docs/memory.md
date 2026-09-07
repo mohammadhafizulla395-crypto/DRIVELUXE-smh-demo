@@ -8,13 +8,56 @@ This is the **living status document**. Update after every completed feature.
 
 ## Current Status
 
-- **Current Phase:** Phase 2.5 (Stabilization Review) — COMPLETE & VERIFIED
-- **Last Updated:** Phase 2.5 final review + browser verification
-- **Build State:** All audit issues fixed; new sections built; lint clean; verified end-to-end.
+- **Current Phase:** Phase 2.5 (Stabilization Review) — COMPLETE & VERIFIED (Round 2)
+- **Last Updated:** Phase 2.5b — ESLint hardening + dead-code removal + admin complaints management
+- **Build State:** All audit issues fixed; lint rules re-enabled & clean; admin complaints tab added; verified end-to-end.
 
 ---
 
-## Phase 2.5 — Stabilization Report
+## Phase 2.5b — Additional Stabilization (this round)
+
+### Fixed Issues
+
+**Code quality / lint hardening:**
+1. **Re-enabled ESLint rules** that were previously disabled (the config was a no-op):
+   `@typescript-eslint/no-unused-vars` (error), `prefer-const` (error), `no-debugger`
+   (error), `no-fallthrough` (error), `no-unreachable` (error), `no-console` (warn),
+   `no-irregular-whitespace` (error). Lint now actually catches real issues.
+2. **Removed `ignoreBuildErrors: true`** from `next.config.ts` — TypeScript errors are
+   no longer silently swallowed at build time.
+3. **Removed dead exports:** `_BookingWhere` (bookings/[id]) and `_AdminStatsWhere`
+   (admin/stats) + their unused `import type { Prisma }` lines.
+4. **Removed unused imports:** `Car`/`Menu`/`X` (admin-navbar), `ArrowRight`/`Input`/
+   `Label` (booking-view), `motion`/`StatusBadge` (admin-dashboard), `motion`
+   (featured-cars).
+5. **Fixed `--font-geist-mono`** undefined CSS variable reference (layout loads Inter
+   as `--font-geist-sans` only; mono now aliases to sans).
+6. **Added scaffold/script files to ESLint ignores:** `tailwind.config.ts`,
+   `postcss.config.mjs`, `prisma/seed.ts`, `src/hooks/use-toast.ts` (vendored shadcn
+   scaffold — not application code).
+
+**New feature (per owner request — admin must see complaints):**
+7. **Admin complaints management** — new `/api/admin/tickets` (GET all tickets with
+   user info) and `/api/admin/tickets/[id]` (PATCH status) routes. Added a
+   "Complaints" tab to the admin dashboard showing every support ticket with
+   customer name/email, category, message, and a status dropdown (open → in_progress
+   → resolved → closed).
+
+### Verification (this round)
+
+- ✅ `bun run lint` — clean, 0 errors (with re-enabled rules).
+- ✅ curl: admin sees 1 ticket ("Question about my booking" from Alex Rider); admin
+  can update ticket status.
+- ✅ Browser: admin portal login → dashboard shows "Complaints (1)" tab; 15 cars,
+  3 bookings, 2 users, $2792 revenue.
+- ✅ Browser: guest navbar shows ONLY Home + Fleet; `#/support` → login redirect;
+  `#/admin` → separated admin login; `#/bad-url` → 404 page.
+- ✅ curl: booking awards points (1745→2792); review creation works; support ticket
+  works; non-admin rejected from admin portal.
+
+---
+
+## Phase 2.5 — Stabilization Report (Round 1)
 
 ### Fixed Issues
 

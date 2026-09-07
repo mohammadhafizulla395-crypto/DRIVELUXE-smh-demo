@@ -9,7 +9,6 @@ import {
   forbidden,
   fail,
 } from '@/lib/api-response'
-import type { Prisma } from '@prisma/client'
 
 export const runtime = 'nodejs'
 
@@ -86,6 +85,3 @@ export async function PATCH(
     return handleError(err)
   }
 }
-
-// satisfy Prisma type import for typed where-clauses if needed later
-export type _BookingWhere = Prisma.BookingWhereInput

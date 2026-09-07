@@ -21,16 +21,23 @@ Next.js Route Handlers (`/api/*`).
 ┌──────────────────────────▼──────────────────────────────┐
 │              Next.js 16 App Router (Server)             │
 │                                                         │
-│  /api/auth/*      → register, login, me, logout         │
-│  /api/cars/*      → list, detail, CRUD (admin)          │
-│  /api/bookings/*  → create, list (user/admin)           │
+│  /api/auth/*        → register, login, me, logout, profile │
+│  /api/admin/login   → separate admin-portal login (admin-only) │
+│  /api/admin/stats   → KPIs (admin)                      │
+│  /api/admin/tickets → list + update support tickets (admin) │
+│  /api/cars/*        → list, detail, CRUD (admin)        │
+│  /api/bookings/*    → create (+points), list, cancel (−points) │
+│  /api/reviews/*     → list by car, create (eligibility), mine │
+│  /api/support       → submit + list support tickets     │
+│  /api/points        → balance + transaction history     │
 │                                                         │
-│  Middleware: JWT verify from httpOnly cookie            │
+│  Auth: JWT verified from httpOnly cookie per request    │
 └──────────────────────────┬──────────────────────────────┘
                            │ Prisma Client
 ┌──────────────────────────▼──────────────────────────────┐
 │                 SQLite (file-based DB)                   │
-│   Tables: User, Car, Booking                            │
+│   Tables: User, Car, Booking, Review, SupportTicket,    │
+│           PointTransaction                              │
 └─────────────────────────────────────────────────────────┘
 ```
 

@@ -200,4 +200,12 @@ export const adminApi = {
         fleetByType: Record<string, number>
       }>('/api/admin/stats')
       .then((r) => r.data),
+  tickets: () =>
+    api
+      .get<{ tickets: Array<SupportTicket & { user?: { id: string; name: string; email: string } }> }>(
+        '/api/admin/tickets',
+      )
+      .then((r) => r.data),
+  updateTicket: (id: string, status: string) =>
+    api.patch<{ ticket: SupportTicket }>(`/api/admin/tickets/${id}`, { status }).then((r) => r.data),
 }

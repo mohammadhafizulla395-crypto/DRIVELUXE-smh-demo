@@ -1,7 +1,6 @@
 import { db } from '@/lib/db'
 import { getUserFromRequest } from '@/lib/auth'
 import { ok, unauthorized, forbidden, handleError } from '@/lib/api-response'
-import type { Prisma } from '@prisma/client'
 
 export const runtime = 'nodejs'
 
@@ -44,6 +43,3 @@ export async function GET() {
     return handleError(err)
   }
 }
-
-// satisfy the import of Prisma type for future typed where-clauses
-export type _AdminStatsWhere = Prisma.CarWhereInput

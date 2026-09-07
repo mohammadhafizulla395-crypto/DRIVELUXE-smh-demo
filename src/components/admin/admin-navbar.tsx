@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Shield, Car, LogOut, ExternalLink, Menu, X } from 'lucide-react'
+import { Shield, LogOut, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
