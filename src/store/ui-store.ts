@@ -44,12 +44,17 @@ export type ViewName =
   | 'booking'
   | 'login'
   | 'register'
+  // customer dashboard (control center)
+  | 'dashboard'
   | 'profile'
   | 'bookings'
+  | 'booking-timeline'
   | 'my-reviews'
   | 'points'
-  | 'refund'
+  | 'payment-history'
   | 'support'
+  | 'notifications'
+  | 'refund'
   | 'privacy'
   | 'terms'
   | 'cookies'
@@ -106,18 +111,26 @@ function viewToHash(view: ViewName, carId?: string | null): string {
       return '#/login'
     case 'register':
       return '#/register'
+    case 'dashboard':
+      return '#/dashboard'
     case 'profile':
       return '#/profile'
     case 'bookings':
       return '#/bookings'
+    case 'booking-timeline':
+      return '#/booking-timeline'
     case 'my-reviews':
       return '#/reviews'
     case 'points':
       return '#/points'
-    case 'refund':
-      return '#/refund'
+    case 'payment-history':
+      return '#/payment-history'
     case 'support':
       return '#/support'
+    case 'notifications':
+      return '#/notifications'
+    case 'refund':
+      return '#/refund'
     case 'privacy':
       return '#/privacy'
     case 'terms':
@@ -195,12 +208,16 @@ function parseHash(): { view: ViewName; carId: string | null } {
   if (first === 'booking' && second) return { view: 'booking', carId: second }
   if (first === 'login') return { view: 'login', carId: null }
   if (first === 'register') return { view: 'register', carId: null }
+  if (first === 'dashboard') return { view: 'dashboard', carId: null }
   if (first === 'profile') return { view: 'profile', carId: null }
   if (first === 'bookings') return { view: 'bookings', carId: null }
+  if (first === 'booking-timeline') return { view: 'booking-timeline', carId: null }
   if (first === 'reviews') return { view: 'my-reviews', carId: null }
   if (first === 'points') return { view: 'points', carId: null }
-  if (first === 'refund') return { view: 'refund', carId: null }
+  if (first === 'payment-history') return { view: 'payment-history', carId: null }
   if (first === 'support') return { view: 'support', carId: null }
+  if (first === 'notifications') return { view: 'notifications', carId: null }
+  if (first === 'refund') return { view: 'refund', carId: null }
   if (first === 'privacy') return { view: 'privacy', carId: null }
   if (first === 'terms') return { view: 'terms', carId: null }
   if (first === 'cookies') return { view: 'cookies', carId: null }

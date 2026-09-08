@@ -11,6 +11,9 @@ import {
   Gift,
   LifeBuoy,
   FileText,
+  LayoutDashboard,
+  CreditCard,
+  Bell,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -65,15 +68,12 @@ export function Navbar() {
         .toUpperCase()
     : ''
 
-  // Guests see only Home + Fleet. Logged-in users see the full menu.
+  // Guests see only Home + Fleet. Logged-in users see Dashboard + Fleet.
   const navLinks: { label: string; view: ViewName }[] = isAuthenticated
     ? [
         { label: 'Home', view: 'home' },
         { label: 'Fleet', view: 'cars' },
-        { label: 'My Bookings', view: 'bookings' },
-        { label: 'Reviews', view: 'my-reviews' },
-        { label: 'Points', view: 'points' },
-        { label: 'Support', view: 'support' },
+        { label: 'Dashboard', view: 'dashboard' },
       ]
     : [
         { label: 'Home', view: 'home' },
@@ -151,17 +151,26 @@ export function Navbar() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => go('profile')}>
-                  <UserIcon className="mr-2 h-4 w-4" /> Profile
+                <DropdownMenuItem onClick={() => go('dashboard')}>
+                  <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => go('bookings')}>
                   <CalendarCheck className="mr-2 h-4 w-4" /> My Bookings
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => go('booking-timeline')}>
+                  <FileText className="mr-2 h-4 w-4" /> Booking Timeline
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => go('my-reviews')}>
                   <Star className="mr-2 h-4 w-4" /> My Reviews
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => go('points')}>
-                  <Gift className="mr-2 h-4 w-4" /> Points
+                  <Gift className="mr-2 h-4 w-4" /> Reward Points
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => go('payment-history')}>
+                  <CreditCard className="mr-2 h-4 w-4" /> Payment History
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => go('notifications')}>
+                  <Bell className="mr-2 h-4 w-4" /> Notifications
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => go('refund')}>

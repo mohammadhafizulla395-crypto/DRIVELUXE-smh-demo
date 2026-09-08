@@ -321,6 +321,33 @@ export const pointsApi = {
       .then((r) => r.data),
 }
 
+/* ---------------------------- payments (customer) ---------------- */
+export const paymentsApi = {
+  mine: () =>
+    api
+      .get<{ payments: Array<Payment & { booking?: { id: string; startDate: string; endDate: string; totalPrice: number; status: string; car?: { id: string; name: string; brand: string; image: string } } }> }>(
+        '/api/payments',
+      )
+      .then((r) => r.data),
+}
+
+/* -------------------------- notifications ------------------------ */
+export interface CustomerNotification {
+  id: string
+  type: 'booking' | 'payment' | 'review' | 'ticket' | 'points'
+  title: string
+  message: string
+  createdAt: string
+  read: boolean
+}
+
+export const notificationsApi = {
+  mine: () =>
+    api
+      .get<{ notifications: CustomerNotification[]; unread: number }>('/api/notifications')
+      .then((r) => r.data),
+}
+
 /* ----------------------------- admin ---------------------------- */
 export interface AdminTableQuery {
   search?: string

@@ -49,6 +49,11 @@ import { NotFoundView } from '@/components/shared/not-found-view'
 import { SupportView } from '@/components/dashboard/support-view'
 import { PointsView } from '@/components/dashboard/points-view'
 import { MyReviewsView } from '@/components/dashboard/my-reviews-view'
+import { CustomerDashboardLayout } from '@/components/dashboard/customer-dashboard-layout'
+import { CustomerDashboard } from '@/components/dashboard/sections/customer-dashboard'
+import { BookingTimeline } from '@/components/dashboard/sections/booking-timeline'
+import { PaymentHistory } from '@/components/dashboard/sections/payment-history'
+import { CustomerNotifications } from '@/components/dashboard/sections/customer-notifications'
 import { useUIStore, initHashRouter } from '@/store/ui-store'
 import { useAuthStore } from '@/store/auth-store'
 import { useEmployeeStore } from '@/store/employee-store'
@@ -76,16 +81,20 @@ export default function Home() {
     }
   }, [])
 
-  // Customer auth guard (main-site protected views only)
+  // Customer auth guard (main-site + dashboard protected views)
   useEffect(() => {
     const protectedViews = [
+      'dashboard',
       'profile',
       'bookings',
       'booking',
+      'booking-timeline',
       'my-reviews',
       'points',
-      'refund',
+      'payment-history',
       'support',
+      'notifications',
+      'refund',
       'privacy',
       'terms',
       'cookies',
@@ -227,6 +236,54 @@ export default function Home() {
     )
   }
 
+  // ===================== CUSTOMER DASHBOARD (control center) =====================
+  const dashboardViews = [
+    'dashboard',
+    'bookings',
+    'booking-timeline',
+    'my-reviews',
+    'points',
+    'payment-history',
+    'support',
+    'notifications',
+    'profile',
+    'refund',
+    'privacy',
+    'terms',
+    'cookies',
+  ]
+
+  if (dashboardViews.includes(view)) {
+    if (!hydrated) {
+      return (
+        <div className="min-h-screen grid place-items-center bg-background">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )
+    }
+    if (!isAuthenticated) {
+      navigate('login')
+      return null
+    }
+    return (
+      <CustomerDashboardLayout>
+        {view === 'dashboard' && <CustomerDashboard />}
+        {view === 'bookings' && <UserDashboard />}
+        {view === 'booking-timeline' && <BookingTimeline />}
+        {view === 'my-reviews' && <MyReviewsView />}
+        {view === 'points' && <PointsView />}
+        {view === 'payment-history' && <PaymentHistory />}
+        {view === 'support' && <SupportView />}
+        {view === 'notifications' && <CustomerNotifications />}
+        {view === 'profile' && <ProfileWrapper />}
+        {view === 'refund' && <RefundView />}
+        {view === 'privacy' && <PrivacyView />}
+        {view === 'terms' && <TermsView />}
+        {view === 'cookies' && <CookiesView />}
+      </CustomerDashboardLayout>
+    )
+  }
+
   // ===================== CUSTOMER SITE (main) =====================
   const isAuthView = view === 'login' || view === 'register'
 
@@ -252,15 +309,6 @@ export default function Home() {
             )}
             {view === 'login' && <LoginForm />}
             {view === 'register' && <RegisterForm />}
-            {view === 'profile' && isAuthenticated && <ProfileWrapper />}
-            {view === 'bookings' && isAuthenticated && <UserDashboard />}
-            {view === 'my-reviews' && isAuthenticated && <MyReviewsView />}
-            {view === 'points' && isAuthenticated && <PointsView />}
-            {view === 'refund' && isAuthenticated && <RefundView />}
-            {view === 'support' && isAuthenticated && <SupportView />}
-            {view === 'privacy' && isAuthenticated && <PrivacyView />}
-            {view === 'terms' && isAuthenticated && <TermsView />}
-            {view === 'cookies' && isAuthenticated && <CookiesView />}
             {view === 'not-found' && <NotFoundView />}
           </motion.div>
         </AnimatePresence>
@@ -270,10 +318,10 @@ export default function Home() {
   )
 }
 
-// Standalone profile view (reuses the profile form)
+// Standalone profile view (inside dashboard layout)
 function ProfileWrapper() {
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pt-24">
+    <div className="max-w-2xl mx-auto">
       <h1 className="text-3xl font-bold tracking-tight mb-2">Your profile</h1>
       <p className="text-muted-foreground mb-8">
         Update your personal information.

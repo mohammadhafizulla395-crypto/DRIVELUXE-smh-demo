@@ -8,9 +8,56 @@ This is the **living status document**. Update after every completed feature.
 
 ## Current Status
 
-- **Current Phase:** Phase 2.7 — Three Independent Portals (Architecture Lock v2) — COMPLETE & VERIFIED
-- **Last Updated:** Customer / Employee / Admin portals fully separated; 3-step admin login; employee portal built; permission matrix enforced.
-- **Build State:** Lint clean; all 3 portals verified via curl + browser; cross-portal isolation confirmed.
+- **Current Phase:** Phase 2.8 — Customer Dashboard + Complete QA & Acceptance Testing — COMPLETE
+- **Last Updated:** Customer Dashboard built (sidebar, cards, timeline, payments, notifications); comprehensive QA passed (44 PASS, 0 FAIL).
+- **Build State:** Lint clean; all 3 portals verified end-to-end; ready for Phase 3.
+
+---
+
+## Phase 2.8 — Customer Dashboard + QA
+
+### Customer Dashboard (NEW)
+
+A dedicated customer control center at `#/dashboard` with its own layout (sidebar + topbar, gold accents matching the customer site). Replaces the old dropdown-only navigation.
+
+**Sidebar (10 items):** Dashboard · My Bookings · Booking Timeline · My Reviews · Reward Points · Payment History · Support Tickets · Notifications · Profile · (Back to site + Log out)
+
+**Dashboard overview — 4 operational cards:**
+- Active Rental (current car in use)
+- Upcoming Booking (next reservation)
+- Reward Points (loyalty balance)
+- Support Status (open tickets count)
+
+**Booking Timeline:** Visual 6-step journey per booking (Booked → Paid → Pickup → In Use → Returned → Completed) with progress bar, current-step highlight, and cancel button for active bookings.
+
+**Payment History:** Table of all payment transactions with status badges (pending/paid/refunded), summary cards (Total Paid, Total Refunded).
+
+**Notifications:** Derived feed from booking status changes, review updates, payment refunds, points earned — with unread count badge.
+
+**New backend endpoints:**
+- `GET /api/payments` — customer's own payment history
+- `GET /api/notifications` — derived notifications (from bookings, reviews, tickets, payments, points)
+
+### QA Results (44 tests)
+
+- ✅ Phase A: All 39 routes return HTTP 200 (customer/employee/admin)
+- ✅ Phase B: Customer dashboard APIs (bookings, points, support, payments, notifications) all return data
+- ✅ Phase C: Authentication — customer login, employee ID login, admin 3-step login, wrong credentials rejected, suspended blocked, separate cookies confirmed
+- ✅ Phase D: Permissions — cross-portal isolation (customer↔employee↔admin all blocked), unauthenticated blocked
+- ✅ Phase E: Booking workflow — full chain (booked→paid→pickup→in_use→returned→completed) + invalid transitions rejected + cancel reverses points
+- ✅ Phase F: Review workflow — pending→recommended→published, only published visible publicly
+- ✅ Phase G: Complaint workflow — open→assigned→working→solved→waiting_approval→admin closes, employees can't close
+- ✅ Phase H: Employee workflow — stats, tasks, performance, attendance, knowledge base, calls all return data
+- ✅ Phase I: Admin workflow — employee CRUD (create/suspend/activate/reset/change-role), car archive/restore, reports approval
+- ✅ Phase L: API envelope format consistent ({success,data} / {success,error}), 401/403/404 correct
+- ✅ Phase M: Security — invalid tokens rejected, direct API access blocked, no shared sessions
+- ✅ Phase N: Database — all entities saved correctly, archive preserved, points updated
+- ⏳ Phase J/K: 12 manual tests required (responsive UI, animations — visual only)
+
+### Demo credentials
+- **Customer:** `rider@driveluxe.com` / `rider123` → `#/login` → `#/dashboard`
+- **Employee:** `EMP-1001` / `emp123` → `#/employee/login`
+- **Admin:** `admin@driveluxe.com` / `admin123` / PIN `246810` → `#/admin/login`
 
 ---
 

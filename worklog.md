@@ -303,3 +303,25 @@ Stage Summary:
 - Review workflow: customer→pending→employee recommends→admin publishes/rejects
 - Complaint workflow: customer→open→employee assigned→working→solved→waiting_approval→admin closes
 - Employee report audit trail: every employee action creates a report for admin review
+
+---
+Task ID: QA-1
+Agent: main (Phase 2.8 — Complete QA & Acceptance Testing)
+Task: Build Customer Dashboard + comprehensive QA across all 3 portals (Phases A-O)
+
+Work Log:
+- Built Customer Dashboard: backend (/api/payments, /api/notifications), layout (sidebar with 10 items), overview (4 cards: Active Rental/Upcoming Booking/Reward Points/Support Status), booking timeline (visual 6-step journey), payment history, notifications
+- Updated ui-store with dashboard/booking-timeline/payment-history/notifications routes
+- Wired page.tsx: customer dashboard views render inside CustomerDashboardLayout (separate from main site navbar/footer)
+- Updated navbar: logged-in users see Home + Fleet + Dashboard; dropdown links to all dashboard sections
+- Fixed SteeringWheel icon (doesn't exist in lucide-react → replaced with Gauge)
+- Ran comprehensive QA: 44 API tests + browser verification
+- All 3 portals verified: routes, auth, permissions, workflows, API envelope, security
+
+Stage Summary:
+- Lint: clean, 0 errors
+- 44 PASS, 0 FAIL (application-level), 12 Manual Test Required (visual/UI)
+- Customer Dashboard fully functional with sidebar, cards, timeline, payments, notifications
+- All workflows enforced server-side (booking/review/complaint/employee-report)
+- Cross-portal isolation confirmed (customer↔employee↔admin all blocked)
+- Admin 3-step login, employee ID login, separate cookies — all verified
