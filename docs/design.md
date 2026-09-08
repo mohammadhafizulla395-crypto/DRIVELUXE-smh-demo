@@ -159,3 +159,53 @@ content shape while loading — never a blank gap.
 Non-admin users who reach an admin route see a dedicated **403 Forbidden**
 page (not the customer 404) with a clear "Administrator access required"
 message and links back to the main site or admin login.
+
+---
+
+## 11. Employee Portal — Operator UI (teal accent, distinct from admin)
+
+The Employee Portal is a **third independent design language** — visually
+distinct from both the customer site (gold luxury) and the admin console
+(amber operator). It uses **teal/cyan accents** to signal "internal work tool."
+
+### Branding
+- **Briefcase icon** (not Car, not Shield) — signals "employee work tool."
+- Brand text: "DriveLuxe" + "Employee" subtitle.
+- Login page: "Employee Portal — Sign in with your Employee ID" (NOT email).
+
+### Layout
+- Same structural pattern as AdminLayout (fixed collapsible sidebar + top
+  bar + breadcrumbs) but with **teal active states**: `bg-teal-500/10`,
+  `text-teal-300`, teal focus rings.
+- **8 sidebar sections**: Dashboard, Today's Tasks, Bookings, Support
+  Tickets, Customer Calls, Knowledge Base, My Performance, Attendance.
+- Mobile: slide-in Sheet (same as admin).
+
+### Login form
+- Two fields only: "Employee ID" (placeholder `EMP-1001`) + "Password".
+- Demo credentials shown: `EMP-1001 / emp123`.
+- "Back to main site" link.
+- NO email field — employees log in with their assigned Employee ID.
+
+### Sections (operator-focused, no marketing)
+- **Dashboard**: 4 operational cards (Pending Tasks, Assigned Tickets,
+  Resolved Today, Pending Reports) + quick actions + task preview + recent
+  reports.
+- **Tasks**: filter by status, task cards with Start/Mark done workflow.
+- **Bookings**: search + filter table; Extend Rental + Report Issue dialogs;
+  prominent notice: "Employees cannot delete bookings, refund money, or
+  approve payments."
+- **Tickets**: My Tickets / Available tabs; 6-state workflow (Assign →
+  Start → Solve → Submit for Approval); employees CANNOT close.
+- **Calls**: call log list + "Log New Call" dialog.
+- **Knowledge Base**: searchable article cards by category.
+- **Performance**: 4 metric cards (Tickets Resolved, Avg Response, Customer
+  Rating, Pending Tasks) + submitted reports list.
+- **Attendance**: summary cards (present/late/absent) + records table.
+
+### Color coding (employee-specific)
+- Ticket status: open=rose, assigned=amber, working=sky, solved=violet,
+  waiting_approval=teal, closed=zinc, reopened=orange.
+- Report status: pending=amber, approved=emerald, rejected=rose.
+- Attendance: present=emerald, absent=rose, late=amber, half_day=sky,
+  leave=zinc.

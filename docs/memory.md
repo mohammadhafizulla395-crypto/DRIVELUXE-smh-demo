@@ -8,13 +8,104 @@ This is the **living status document**. Update after every completed feature.
 
 ## Current Status
 
-- **Current Phase:** Phase 2.6 — Admin Console Refactor (Architecture Lock) — COMPLETE & VERIFIED
-- **Last Updated:** Admin console fully separated; 8 sections built; workflows enforced; owner contact added.
-- **Build State:** Lint clean; all admin APIs + sections verified via curl + browser; 403 enforced.
+- **Current Phase:** Phase 2.7 — Three Independent Portals (Architecture Lock v2) — COMPLETE & VERIFIED
+- **Last Updated:** Customer / Employee / Admin portals fully separated; 3-step admin login; employee portal built; permission matrix enforced.
+- **Build State:** Lint clean; all 3 portals verified via curl + browser; cross-portal isolation confirmed.
 
 ---
 
-## Phase 2.6 — Admin Console Refactor
+## Phase 2.7 — Three Independent Portals (Architecture Lock v2)
+
+### What changed
+
+Refactored the application into **three completely independent portals**,
+each with its own auth, layout, navigation, and session checks. The customer
+website was not redesigned — only the portal separation was added.
+
+### Portal 1 — Customer (`#/`)
+- email + password login (unchanged)
+- Books cars, writes reviews, earns points, views profile/bookings/points/support/legal
+- **No links to Employee or Admin portals anywhere in navbar/footer**
+
+### Portal 2 — Employee (`#/employee/*`) — NEW
+- Login with **Employee ID** (EMP-XXXX) + password (NOT email)
+- Separate JWT + separate cookie (`driveluxe_employee_token`)
+- Suspended employees rejected; employees never self-register (admin creates them)
+- 8 sections: Dashboard, Today's Tasks, Bookings, Support Tickets, Customer
+  Calls, Knowledge Base, My Performance, Attendance
+- **Cannot**: book cars, write reviews, earn points, close tickets, refund
+  money, approve payments, delete bookings
+- **Can**: handle assigned tickets (open→assigned→working→solved→waiting_approval),
+  assist bookings (extend rental request, report issue), recommend reviews
+  (approve/reject/flag — admin decides), log customer calls, submit reports
+- Teal accent UI (distinct from admin's amber)
+
+### Portal 3 — Admin (`#/admin/*`) — UPGRADED
+- **3-step login**: email → password → 6-digit PIN (with step indicator + animations)
+- 12 sidebar sections: Dashboard, Operations, Bookings, Fleet, Maintenance,
+  Employees, Customers, Payments, Reviews, Complaints, Reports, Settings
+- **New: Employee Management** — create employees (auto-generated EMP-XXXX ID),
+  suspend/activate, reset password, change role
+- **New: Reports** — approve/reject employee reports; approved ticket
+  resolutions auto-close the ticket; approved review recommendations
+  auto-publish/reject the review
+- **Updated: Reviews** — moderation workflow (pending → recommended →
+  published/rejected); only `published` reviews visible to customers
+- Amber accent UI (unchanged)
+
+### Permission matrix (enforced server-side)
+
+| Action | Customer | Employee | Admin |
+|--------|----------|----------|-------|
+| Book Car | ✅ | ❌ | ❌ |
+| Write Review | ✅ | ❌ | ❌ |
+| Reply to Review | ❌ | Recommend | Approve |
+| Resolve Complaint | ❌ | → waiting approval | Close |
+| Manage Cars | ❌ | View | Full |
+| Refund | ❌ | Request | Approve |
+| Create/Suspend Employee | ❌ | ❌ | Yes |
+
+### Workflows
+
+- **Review**: customer posts (`pending`) → employee recommends (`recommended`) → admin publishes/rejects
+- **Complaint**: customer submits (`open`) → employee assigns+works+solves (`waiting_approval`) → admin closes
+- **Booking**: booked → paid → pickup → in_use → returned → completed
+- **Employee report audit trail**: every employee action → `pending` report → admin approves/rejects
+
+### New data models
+
+- **Employee** (employeeId, name, email, password, role, status, performance metrics)
+- **EmployeeReport** (employeeId, type, description, status, adminNote) — audit trail
+- **Task** (employeeId, title, status) — daily tasks
+- **CustomerCall** (employeeId, customerName, subject, notes, outcome, duration)
+- **KnowledgeBase** (title, category, content, tags)
+- **Attendance** (employeeId, date, checkIn, checkOut, status)
+- **MaintenanceRecord** (carId, type, description, cost, status)
+- **User.pin** — 6-digit admin PIN for 3-step login
+- Review: added `status`, `employeeId`, `employeeRecommendation`, `employeeNote`
+- SupportTicket: added `assignedEmployeeId`, `resolution`, `adminNote`
+- Payment: added `refundReason`, `refundRequestedBy`
+
+### Demo credentials
+
+- **Customer:** rider@driveluxe.com / rider123 (at `#/login`)
+- **Employee:** EMP-1001 / emp123 (at `#/employee/login`) — Sara Chen, support
+- **Admin:** admin@driveluxe.com / admin123 / PIN 246810 (at `#/admin/login`)
+
+### Verification
+
+- ✅ `bun run lint` — clean (0 errors)
+- ✅ curl (15 tests): admin 3-step login (correct/wrong/missing PIN), employee
+  login (correct/email-rejected/suspended), employee stats/tickets/tasks/
+  performance, admin employees list, admin reports, cross-portal isolation
+  (customer→employee rejected, employee→admin rejected, admin→employee rejected)
+- ✅ Browser: employee portal login + all 8 sections render; admin 3-step
+  login + all 12 sidebar sections render; employee (teal) & admin (amber)
+  layouts visually independent
+
+---
+
+## Phase 2.6 — Admin Console Refactor (Round 1)
 
 ### What changed
 

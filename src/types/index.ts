@@ -167,3 +167,133 @@ export interface UpcomingPickup {
   user: { id: string; name: string; email: string }
   car: { id: string; name: string; brand: string; image: string }
 }
+
+/* ============================= EMPLOYEE PORTAL ============================= */
+
+export type EmployeeRole = 'support' | 'fleet' | 'customer_care'
+export type EmployeeStatus = 'active' | 'suspended' | 'inactive'
+
+export interface AuthEmployee {
+  id: string
+  employeeId: string // EMP-XXXX
+  name: string
+  email: string
+  phone: string | null
+  role: EmployeeRole
+  status: EmployeeStatus
+  ticketsResolved: number
+  avgResponseMin: number
+  customerRating: number
+}
+
+export interface Employee {
+  id: string
+  employeeId: string
+  name: string
+  email: string
+  phone: string | null
+  role: EmployeeRole
+  status: EmployeeStatus
+  ticketsResolved: number
+  avgResponseMin: number
+  customerRating: number
+  createdAt: string
+  updatedAt: string
+}
+
+// Employee ticket workflow: Open → Assigned → Working → Solved → Waiting Approval → Closed
+export type EmployeeTicketStatus =
+  | 'open'
+  | 'assigned'
+  | 'working'
+  | 'solved'
+  | 'waiting_approval'
+  | 'closed'
+  | 'reopened'
+
+// Review moderation workflow: pending → under_review → recommended → published | rejected
+export type ReviewStatus =
+  | 'pending'
+  | 'under_review'
+  | 'recommended'
+  | 'published'
+  | 'rejected'
+
+export type ReviewRecommendation = 'approve' | 'reject' | 'flag'
+
+export interface EmployeeReport {
+  id: string
+  employeeId: string
+  type: string
+  description: string
+  refId: string | null
+  status: 'pending' | 'approved' | 'rejected'
+  adminNote: string | null
+  createdAt: string
+  reviewedAt: string | null
+  employee?: Pick<Employee, 'id' | 'employeeId' | 'name' | 'role'>
+}
+
+export interface Task {
+  id: string
+  employeeId: string
+  title: string
+  description: string
+  status: 'pending' | 'in_progress' | 'done'
+  dueDate: string | null
+  createdAt: string
+}
+
+export interface CustomerCall {
+  id: string
+  employeeId: string
+  userId: string | null
+  customerName: string
+  customerPhone: string
+  bookingId: string | null
+  subject: string
+  notes: string
+  outcome: 'logged' | 'resolved' | 'escalated'
+  duration: number
+  createdAt: string
+}
+
+export interface KnowledgeBaseArticle {
+  id: string
+  title: string
+  category: string
+  content: string
+  tags: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Attendance {
+  id: string
+  employeeId: string
+  date: string
+  checkIn: string | null
+  checkOut: string | null
+  status: 'present' | 'absent' | 'late' | 'half_day' | 'leave'
+  notes: string | null
+}
+
+export interface EmployeeStats {
+  pendingTasks: number
+  assignedTickets: number
+  resolvedToday: number
+  pendingReports: number
+}
+
+export interface MaintenanceRecord {
+  id: string
+  carId: string
+  type: 'routine' | 'repair' | 'inspection' | 'cleaning'
+  description: string
+  cost: number
+  status: 'scheduled' | 'in_progress' | 'completed'
+  scheduledDate: string | null
+  completedAt: string | null
+  createdAt: string
+  car?: Pick<Car, 'id' | 'name' | 'brand' | 'image'>
+}

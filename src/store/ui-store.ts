@@ -14,16 +14,30 @@ import { create } from 'zustand'
 
 export type AdminSection =
   | 'dashboard'
+  | 'operations'
   | 'cars'
   | 'bookings'
   | 'customers'
   | 'payments'
   | 'complaints'
   | 'reviews'
+  | 'employees'
+  | 'reports'
+  | 'maintenance'
   | 'settings'
 
+export type EmployeeSection =
+  | 'dashboard'
+  | 'tasks'
+  | 'bookings'
+  | 'tickets'
+  | 'calls'
+  | 'knowledge'
+  | 'performance'
+  | 'attendance'
+
 export type ViewName =
-  // main site
+  // main site (customer)
   | 'home'
   | 'cars'
   | 'car-detail'
@@ -39,15 +53,30 @@ export type ViewName =
   | 'privacy'
   | 'terms'
   | 'cookies'
+  // employee portal (separated)
+  | 'employee-login'
+  | 'employee' // = employee dashboard
+  | 'employee-tasks'
+  | 'employee-bookings'
+  | 'employee-tickets'
+  | 'employee-calls'
+  | 'employee-knowledge'
+  | 'employee-performance'
+  | 'employee-attendance'
+  | 'employee-forbidden'
   // admin portal (separated)
   | 'admin-login'
   | 'admin' // = admin dashboard
+  | 'admin-operations'
   | 'admin-cars'
   | 'admin-bookings'
   | 'admin-customers'
   | 'admin-payments'
   | 'admin-complaints'
   | 'admin-reviews'
+  | 'admin-employees'
+  | 'admin-reports'
+  | 'admin-maintenance'
   | 'admin-settings'
   | 'admin-forbidden'
   // errors
@@ -99,6 +128,8 @@ function viewToHash(view: ViewName, carId?: string | null): string {
       return '#/admin/login'
     case 'admin':
       return '#/admin/dashboard'
+    case 'admin-operations':
+      return '#/admin/operations'
     case 'admin-cars':
       return '#/admin/cars'
     case 'admin-bookings':
@@ -111,10 +142,37 @@ function viewToHash(view: ViewName, carId?: string | null): string {
       return '#/admin/complaints'
     case 'admin-reviews':
       return '#/admin/reviews'
+    case 'admin-employees':
+      return '#/admin/employees'
+    case 'admin-reports':
+      return '#/admin/reports'
+    case 'admin-maintenance':
+      return '#/admin/maintenance'
     case 'admin-settings':
       return '#/admin/settings'
     case 'admin-forbidden':
       return '#/admin/forbidden'
+    // employee portal
+    case 'employee-login':
+      return '#/employee/login'
+    case 'employee':
+      return '#/employee/dashboard'
+    case 'employee-tasks':
+      return '#/employee/tasks'
+    case 'employee-bookings':
+      return '#/employee/bookings'
+    case 'employee-tickets':
+      return '#/employee/tickets'
+    case 'employee-calls':
+      return '#/employee/calls'
+    case 'employee-knowledge':
+      return '#/employee/knowledge'
+    case 'employee-performance':
+      return '#/employee/performance'
+    case 'employee-attendance':
+      return '#/employee/attendance'
+    case 'employee-forbidden':
+      return '#/employee/forbidden'
     case 'not-found':
       return '#/not-found'
     default:
@@ -149,15 +207,33 @@ function parseHash(): { view: ViewName; carId: string | null } {
   if (first === 'admin') {
     if (second === 'login') return { view: 'admin-login', carId: null }
     if (second === 'forbidden') return { view: 'admin-forbidden', carId: null }
+    if (second === 'operations') return { view: 'admin-operations', carId: null }
     if (second === 'cars') return { view: 'admin-cars', carId: null }
     if (second === 'bookings') return { view: 'admin-bookings', carId: null }
     if (second === 'customers') return { view: 'admin-customers', carId: null }
     if (second === 'payments') return { view: 'admin-payments', carId: null }
     if (second === 'complaints') return { view: 'admin-complaints', carId: null }
     if (second === 'reviews') return { view: 'admin-reviews', carId: null }
+    if (second === 'employees') return { view: 'admin-employees', carId: null }
+    if (second === 'reports') return { view: 'admin-reports', carId: null }
+    if (second === 'maintenance') return { view: 'admin-maintenance', carId: null }
     if (second === 'settings') return { view: 'admin-settings', carId: null }
     // bare #/admin or #/admin/dashboard → dashboard
     return { view: 'admin', carId: null }
+  }
+  if (first === 'employee') {
+    if (second === 'login') return { view: 'employee-login', carId: null }
+    if (second === 'forbidden') return { view: 'employee-forbidden', carId: null }
+    if (second === 'dashboard') return { view: 'employee', carId: null }
+    if (second === 'tasks') return { view: 'employee-tasks', carId: null }
+    if (second === 'bookings') return { view: 'employee-bookings', carId: null }
+    if (second === 'tickets') return { view: 'employee-tickets', carId: null }
+    if (second === 'calls') return { view: 'employee-calls', carId: null }
+    if (second === 'knowledge') return { view: 'employee-knowledge', carId: null }
+    if (second === 'performance') return { view: 'employee-performance', carId: null }
+    if (second === 'attendance') return { view: 'employee-attendance', carId: null }
+    // bare #/employee → dashboard
+    return { view: 'employee', carId: null }
   }
   if (first === 'not-found') return { view: 'not-found', carId: null }
 

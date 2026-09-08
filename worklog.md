@@ -231,3 +231,75 @@ Stage Summary:
 - 403 enforced for non-admin users
 - Owner contact (Hafizulla / 91000527275 / hafizullas58@gmail.com) on Settings page
 - Customer website unchanged
+
+---
+Task ID: 6
+Agent: full-stack-developer
+Task: Build Employee Portal frontend (layout + login + 8 sections)
+
+Work Log:
+- Read worklog.md (Phase 2.5 stabilization, Phase 2.6 admin refactor history) and `/agent-ctx` (none yet for task 6).
+- Read existing scaffolding: src/store/employee-store.ts (AuthEmployee state), src/lib/api.ts (employeeAuthApi + employeeApi with stats/tickets/tasks/calls/performance/attendance/knowledgeBase/reports/bookings/reviews/customers), src/types/index.ts (AuthEmployee, EmployeeReport, Task, CustomerCall, KnowledgeBaseArticle, Attendance, EmployeeTicketStatus), src/store/ui-store.ts (hash router with employee/* views already mapped), src/components/admin/admin-ui.tsx (AdminPageHeader/AdminTableSkeleton/AdminPagination/AdminEmptyState), src/components/admin/admin-layout.tsx (sidebar + topbar + sheet pattern), src/components/admin/admin-login-form.tsx (login form pattern), src/components/admin/sections/admin-{dashboard,complaints,bookings,cars}.tsx (operational UI patterns).
+- Read src/lib/validations.ts (loginSchema, carSchema) and src/lib/utils.ts (cn, parseFeatures, formatCurrency, formatDate). Verified all needed lucide-react icons exist (Briefcase, LayoutDashboard, CheckSquare, CalendarCheck, LifeBuoy, Phone, BookOpen, BarChart3, Clock, LogOut, Menu, PanelLeftClose, IdCard, Hand, Wrench, Send, etc.).
+- Added `employeeLoginSchema` + `EmployeeLoginInput` to src/lib/validations.ts (Employee ID regex `^EMP-\d{3,5}$` + password).
+- Wrote src/components/employee/employee-login-form.tsx — Briefcase icon branding with teal accent (bg-teal-500/15, text-teal-300 ring-teal-400/30), "Employee Portal" title + "Sign in with your Employee ID" subtitle, Employee ID field with IdCard icon (placeholder EMP-1001, monospace font), Password field, RHF + Zod, role="alert" on all errors, "EMP-1001 / emp123" demo credentials box, "Back to main site" link. Visually distinct from customer login (luxury "Welcome back") and admin login ("Authorized personnel only" with Shield icon + amber/gold).
+- Wrote src/components/employee/employee-layout.tsx — fixed collapsible sidebar (Briefcase branding with teal ring, "DriveLuxe Employee" subtitle), 8 nav items in spec order (Dashboard / Today's Tasks / Bookings / Support Tickets / Customer Calls / Knowledge Base / My Performance / Attendance), separator, "View site" + "Logout" footer. Active nav uses bg-teal-500/10 + text-teal-300 + ring-1 ring-teal-400/20. Desktop collapse (Cmd+[ shortcut) + mobile Sheet. Topbar: collapse toggle, Briefcase icon + breadcrumb (Employee / [section name]), employee avatar dropdown (name, employeeId, role label, my performance / attendance / view main site / sign out). Uses useEmployeeStore.logout() then navigate('employee-login').
+- Wrote src/components/employee/sections/employee-dashboard.tsx — 4 operational stat cards from employeeApi.stats() (Pending Tasks, Assigned Tickets, Resolved Today, Pending Reports) each clickable to the relevant section; quick action buttons (View tasks / Open tickets / Log a call); two-column preview (My Tasks first 5 + Recent Activity reports last 5) with teal-accented badges; skeleton + empty state handling.
+- Wrote src/components/employee/sections/employee-tasks.tsx — filter Select (all/pending/in_progress/done), task cards with CheckSquare icon tinted by status, status badge, "Start" (pending→in_progress) / "Mark done" (in_progress→done) / "Reopen" (done→pending) buttons, PATCH via employeeApi.tasks.update; busy state per task.
+- Wrote src/components/employee/sections/employee-bookings.tsx — debounced search + status filter Select, full bookings table (Customer / Car w/ image thumbnail / Dates / Total / Status badge / Payment badge / Actions), amber notice banner "Employees cannot delete bookings, refund money, or approve payments", two action buttons per row: "Extend" (dialog with new end date → employeeApi.bookings.assist(id, { action:'extend', newEndDate })) and "Report" (dialog with issue description textarea, min 10 chars → employeeApi.bookings.assist(id, { action:'report_issue', issueDescription })). Extend disabled for cancelled/completed bookings.
+- Wrote src/components/employee/sections/employee-tickets.tsx — Tabs ("My Tickets" scope=mine / "Available" scope=available&status=open), ticket cards with subject / category badge / status badge (color-coded per spec: open=rose, assigned=amber, working=sky, solved=violet, waiting_approval=teal, closed=zinc, reopened=orange), customer name/email/date metadata, message body. Workflow buttons: "Assign to me" (open→assigned), "Start working" (assigned→working), "Mark solved" (working→solved via dialog with resolution textarea min 10 chars), "Submit for approval" (solved→waiting_approval), "Resume work" (reopened→working). Uses employeeApi.tickets.update(id, { status, resolution }). Available tab auto-removes a ticket after "Assign to me".
+- Wrote src/components/employee/sections/employee-calls.tsx — list of past calls (PhoneCall icon tinted by outcome, customer name/phone/duration/date, subject + outcome badge: logged=zinc, resolved=emerald, escalated=rose, notes body). "Log New Call" dialog with form (customerName, customerPhone, subject, notes, outcome Select [logged/resolved/escalated], duration number). Validates required fields with friendly toasts; POSTs via employeeApi.calls.create.
+- Wrote src/components/employee/sections/employee-knowledge.tsx — debounced search + category filter Select (all/booking/refund/payment/general/fleet), article cards in a 2-col grid (BookOpen icon, title, category badge color-coded, content body rendered as text with whitespace-pre-line, tags as small chips, "Updated {date}" footer). Client-side search filters fetched articles by title/content/tags.
+- Wrote src/components/employee/sections/employee-performance.tsx — 4 metric cards (Tickets Resolved / Avg Response min / Customer Rating / Pending Tasks) from employeeApi.performance().metrics, then "Submitted Reports" list with FileText icon, type + submitted/reviewed dates, admin note (italic), status badge (pending=amber, approved=emerald, rejected=rose).
+- Wrote src/components/employee/sections/employee-attendance.tsx — 3 summary cards computed via useMemo from records (Present Days = present+half_day, Late Arrivals, Absent Days), then a records Table sorted newest-first (Date with CalendarDays icon, Check-in time mono, Check-out time mono, Status badge [present=emerald, absent=rose, late=amber, half_day=sky, leave=zinc], Notes column). Helper formatTime() guards against null/invalid ISO.
+- Ran `bun run lint` — first pass surfaced 2 issues: (1) unused `eslint-disable @next/next/no-img-element` directive in employee-bookings.tsx (rule is already off in eslint.config.mjs), (2) `react-hooks/set-state-in-effect` error in employee-knowledge.tsx from synchronously calling `setLoaded(false)` inside the effect body. Fixed (1) by removing the directive; fixed (2) by removing the synchronous `setLoaded(false)` and matching the admin-dashboard.tsx `let active = true` pattern (initial `loaded=false` already shows skeleton on first render). Re-ran lint — clean, 0 errors, 0 warnings, exit 0.
+- Verified dev server is still healthy (tail of dev.log shows successful compiles, no errors after the new files were added to the project graph).
+
+Stage Summary:
+- 10 production-quality files written to disk:
+  - src/components/employee/employee-login-form.tsx (~190 lines) — Briefcase + teal Employee login, distinct from customer (gold/luxury) and admin (Shield/amber).
+  - src/components/employee/employee-layout.tsx (~310 lines) — collapsible sidebar + topbar + mobile sheet + avatar dropdown, teal accent throughout, 8 nav items in spec order + logout.
+  - src/components/employee/sections/employee-dashboard.tsx (~280 lines) — 4 stat cards + quick actions + tasks/reports previews.
+  - src/components/employee/sections/employee-tasks.tsx (~225 lines) — filter + status-tinted task cards + Start/Mark done/Reopen workflow.
+  - src/components/employee/sections/employee-bookings.tsx (~500 lines) — search/filter table + Extend/Report dialogs + employee-permission notice.
+  - src/components/employee/sections/employee-tickets.tsx (~465 lines) — Tabs (mine/available) + 6-state workflow with color-coded badges + solve dialog.
+  - src/components/employee/sections/employee-calls.tsx (~340 lines) — call list + Log New Call dialog with full form.
+  - src/components/employee/sections/employee-knowledge.tsx (~190 lines) — search/filter + article cards grid with tags.
+  - src/components/employee/sections/employee-performance.tsx (~225 lines) — 4 metric cards + submitted-reports list.
+  - src/components/employee/sections/employee-attendance.tsx (~225 lines) — 3 summary cards + records table with status badges.
+- Added `employeeLoginSchema` + `EmployeeLoginInput` to src/lib/validations.ts.
+- All files: 'use client', no `any` types, proper TS types from @/types, cn() for conditional classes, useToast for feedback, useUIStore for navigation, useEmployeeStore for auth, dark operator UI with teal accents (NOT amber, NOT gold), skeleton loading on every async view, AdminEmptyState for empty lists, role="alert" on form errors, accessible aria-labels on icon-only buttons.
+- Components are NOT yet wired into the app router (page.tsx still only renders admin + customer views). Wiring (rendering EmployeeLayout for employee-* views with auth guard + EmployeeLoginForm for employee-login + employee-forbidden fallback) is the next agent's responsibility — ui-store hash routes (#/employee/login, #/employee/dashboard, #/employee/tasks, etc.) already exist and the components are import-ready.
+- Final lint: 0 errors, 0 warnings, exit 0.
+
+---
+Task ID: 1-9
+Agent: main (Phase 2.7 — Three Independent Portals Architecture Lock v2)
+Task: Refactor into 3 completely separate portals (Customer / Employee / Admin) with independent auth, layouts, and permission matrix
+
+Work Log:
+- DB schema: added Employee, EmployeeReport, Task, CustomerCall, KnowledgeBase, Attendance, MaintenanceRecord models; admin PIN field on User; review workflow fields (status, employeeId, employeeRecommendation, employeeNote); complaint workflow fields (assignedEmployeeId, resolution, adminNote); payment refund-request fields; force-reset + reseeded with 3 employees + tasks + knowledge base + maintenance + admin PIN
+- Auth: extended auth.ts with separate employee JWT (separate cookie driveluxe_employee_token), verifyEmployeeToken, getEmployeeFromRequest, signEmployeeToken; employee-helpers.ts with requireEmployee() guard
+- Backend employee APIs: /api/employee/{login,me,logout,stats,tickets,tasks,calls,performance,attendance,knowledge-base,reports,bookings,reviews,customers} — all guarded by requireEmployee()
+- Backend admin APIs: upgraded /api/admin/login to 3-step (email+password+6-digit PIN, validated in sequence); new /api/admin/employees (CRUD + suspend/activate/reset_password/change_role); new /api/admin/reports (list + approve/reject with auto-follow-up: approved ticket→closed, approved review→published); updated /api/admin/reviews for moderation workflow (pending→recommended→published/rejected)
+- Updated /api/reviews: public GET only returns 'published' reviews; POST creates with status 'pending' (triggers employee review workflow)
+- Employee ticket workflow enforced: open→assigned→working→solved→waiting_approval (employees CANNOT close — only admin)
+- API client: added employeeAuthApi + employeeApi (all sub-objects) + adminApi.employees + adminApi.reports + adminApi.reviews.decide
+- Types: added AuthEmployee, Employee, EmployeeReport, Task, CustomerCall, KnowledgeBaseArticle, Attendance, EmployeeTicketStatus, ReviewStatus, ReviewRecommendation, MaintenanceRecord
+- UI store: added employee routes (employee-login, employee, employee-tasks/bookings/tickets/calls/knowledge/performance/attendance, employee-forbidden) + new admin routes (admin-operations, admin-employees, admin-reports, admin-maintenance) with hash mapping
+- Employee auth store: new src/store/employee-store.ts (separate from customer auth-store)
+- Frontend (subagent): EmployeeLoginForm (Employee ID + password, Briefcase branding, teal accents), EmployeeLayout (collapsible sidebar, 8 nav items, teal accent to distinguish from admin amber), 8 employee sections (dashboard/tasks/bookings/tickets/calls/knowledge/performance/attendance)
+- Frontend (main): AdminLoginForm rewritten as 3-step wizard (email→password→PIN with step indicator + AnimatePresence transitions), AdminEmployees section (table + create drawer + suspend/activate/reset-password/change-role dialogs), AdminReports section (approve/reject with auto-follow-up), updated AdminLayout sidebar (12 items: Dashboard/Operations/Bookings/Fleet/Maintenance/Employees/Customers/Payments/Reviews/Complaints/Reports/Settings)
+- Wired page.tsx: 3 independent portal blocks (Employee → Admin → Customer) with separate auth guards; employee views require empAuthed, admin views require isAdmin, customer views require isAuthenticated
+- Verified via curl (15 tests: admin 3-step login, employee login, suspended rejection, cross-portal isolation, all employee endpoints, admin employee/reports endpoints) — all pass
+- Verified via browser: employee portal login + all 8 sections render; admin 3-step login + all 12 sidebar sections render; employee & admin layouts visually independent (teal vs amber accents)
+
+Stage Summary:
+- Lint: clean, 0 errors
+- 3 independent portals fully separated with independent auth, layouts, nav, and guards
+- Admin 3-step login (email→password→PIN) working
+- Employee portal (8 sections) working with EMP-ID login
+- Permission matrix enforced server-side (employees can't close tickets/admin endpoints; admin can't access employee endpoints; customer can't access either)
+- Review workflow: customer→pending→employee recommends→admin publishes/rejects
+- Complaint workflow: customer→open→employee assigned→working→solved→waiting_approval→admin closes
+- Employee report audit trail: every employee action creates a report for admin review

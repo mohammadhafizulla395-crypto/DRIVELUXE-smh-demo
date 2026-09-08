@@ -22,6 +22,17 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 })
 
+/* ------------------------- employee auth ---------------------------- */
+// Employee portal login — Employee ID (EMP-XXXX) + password
+export const employeeLoginSchema = z.object({
+  employeeId: z
+    .string()
+    .min(1, 'Employee ID is required')
+    .regex(/^EMP-\d{3,5}$/i, 'Use the format EMP-1001'),
+  password: z.string().min(1, 'Password is required'),
+})
+export type EmployeeLoginInput = z.infer<typeof employeeLoginSchema>
+
 export const profileSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(60),
   phone: z

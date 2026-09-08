@@ -1,5 +1,10 @@
 // DriveLuxe — Premium Car Rental Platform
 // Prisma schema (SQLite). Lists stored as comma-separated strings.
+//
+// Three independent portals:
+//   1. Customer  (User with role=user)   — books cars, writes reviews, earns points
+//   2. Employee  (Employee model)        — handles tickets, assists bookings, recommends reviews
+//   3. Admin     (User with role=admin)  — manages everything, 3-step login (email+password+PIN)
 
 generator client {
   provider = "prisma-client-js"
@@ -10,6 +15,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/* ============================= CUSTOMER ============================= */
+
 model User {
   id               String             @id @default(cuid())
   name             String
@@ -17,6 +24,7 @@ model User {
   password         String
   phone            String?
   role             String             @default("user") // "user" | "admin"
+  pin              String?            // 6-digit admin PIN (admin only)
   points           Int                @default(0)
   archived         Boolean            @default(false)
   createdAt        DateTime           @default(now())
@@ -48,6 +56,7 @@ model Car {
   updatedAt    DateTime @updatedAt
   bookings     Booking[]
   reviews      Review[]
+  maintenanceRecords MaintenanceRecord[]
 }
 
 // Booking workflow: Booked → Paid → Pickup → In Use → Returned → Completed
@@ -74,37 +83,55 @@ model Booking {
   @@index([status])
 }
 
+// Review workflow: Customer posts → Employee reviews → Admin approves → Published
+//   status: pending → under_review → recommended → published | rejected
+//   employeeRecommendation: approve | reject | flag (set by employee)
 model Review {
-  id        String   @id @default(cuid())
-  userId    String
-  carId     String
-  rating    Int // 1-5
-  comment   String   @default("")
-  archived  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  car       Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
+  id                   String   @id @default(cuid())
+  userId               String
+  carId                String
+  rating               Int // 1-5
+  comment              String   @default("")
+  // pending | under_review | recommended | published | rejected
+  status               String   @default("pending")
+  employeeId           String?
+  employeeRecommendation String? // approve | reject | flag
+  employeeNote         String?  // employee's verification notes
+  archived             Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  reviewedAt           DateTime?
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  car                  Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
+  employee             Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
 
   @@unique([userId, carId])
   @@index([carId])
+  @@index([status])
 }
 
-// Support / Complaints workflow: Open → In Progress → Resolved → Closed
+// Complaint workflow:
+//   Open → Assigned → Working → Solved → Waiting Admin Approval → Closed
+//   (Admin can reopen)
 model SupportTicket {
-  id        String   @id @default(cuid())
-  userId    String
-  subject   String
-  category  String   @default("general") // general | booking | refund | payment | other
-  message   String
-  // open | in_progress | resolved | closed
-  status    String   @default("open")
-  archived  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String   @id @default(cuid())
+  userId      String
+  subject     String
+  category    String   @default("general") // general | booking | refund | payment | other
+  message     String
+  // open | assigned | working | solved | waiting_approval | closed | reopened
+  status      String   @default("open")
+  assignedEmployeeId String?
+  resolution  String?  // employee's resolution notes
+  adminNote   String?  // admin's final note
+  archived    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedEmployee Employee? @relation(fields: [assignedEmployeeId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([status])
+  @@index([assignedEmployeeId])
 }
 
 model PointTransaction {
@@ -120,15 +147,18 @@ model PointTransaction {
 }
 
 // Payment workflow: Pending → Paid → Refunded
+// Refund requires admin approval; employees can only request.
 model Payment {
   id          String   @id @default(cuid())
   bookingId   String   @unique
   userId      String
   amount      Float
   method      String   @default("card") // card | cash | transfer
-  // pending | paid | refunded
+  // pending | paid | refunded | refund_requested | refund_approved
   status      String   @default("pending")
   txnRef      String?  // transaction reference
+  refundReason String?
+  refundRequestedBy String? // employee id who requested
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
@@ -137,12 +167,139 @@ model Payment {
   @@index([status])
 }
 
+/* ============================= EMPLOYEE ============================= */
+
+// Employee portal — separate from User. Login by employeeId (EMP-XXXX) + password.
+// Admin creates employees; employees never self-register.
+model Employee {
+  id            String   @id @default(cuid())
+  employeeId    String   @unique // EMP-1001, EMP-1002, etc.
+  name          String
+  email         String   @unique
+  phone         String?
+  password      String
+  role          String   @default("support") // support | fleet | customer_care
+  status        String   @default("active") // active | suspended | inactive
+  // performance metrics (updated as work is done)
+  ticketsResolved Int    @default(0)
+  avgResponseMin  Int    @default(0)
+  customerRating  Float  @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  assignedTickets  SupportTicket[]
+  reviewedReviews  Review[]
+  reports        EmployeeReport[]
+  calls          CustomerCall[]
+  tasks          Task[]
+  attendance     Attendance[]
+}
+
+// Audit trail — every employee action creates a report for admin review
+model EmployeeReport {
+  id          String   @id @default(cuid())
+  employeeId  String
+  type        String   // ticket_resolved | review_recommended | booking_assisted | refund_requested | call_logged
+  description String
+  refId       String?  // related entity id (ticket, review, booking, payment)
+  // pending | approved | rejected
+  status      String   @default("pending")
+  adminNote   String?
+  createdAt   DateTime @default(now())
+  reviewedAt  DateTime?
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([status])
+}
+
+// Employee daily tasks — assigned by system/admin
+model Task {
+  id          String   @id @default(cuid())
+  employeeId  String
+  title       String
+  description String   @default("")
+  // pending | in_progress | done
+  status      String   @default("pending")
+  dueDate     DateTime?
+  createdAt   DateTime @default(now())
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([status])
+}
+
+// Employee logs customer calls
+model CustomerCall {
+  id          String   @id @default(cuid())
+  employeeId  String
+  userId      String?  // the customer called (optional if unknown)
+  customerName String
+  customerPhone String
+  bookingId   String?
+  subject     String
+  notes       String   @default("")
+  outcome     String   @default("logged") // logged | resolved | escalated
+  duration    Int      @default(0) // minutes
+  createdAt   DateTime @default(now())
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([userId])
+}
+
+// Employee attendance
+model Attendance {
+  id          String   @id @default(cuid())
+  employeeId  String
+  date        DateTime
+  checkIn     DateTime?
+  checkOut    DateTime?
+  // present | absent | late | half_day | leave
+  status      String   @default("present")
+  notes       String?
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, date])
+  @@index([employeeId])
+}
+
+// Knowledge base articles for employees
+model KnowledgeBase {
+  id          String   @id @default(cuid())
+  title       String
+  category    String   @default("general") // general | booking | refund | payment | fleet
+  content     String
+  tags        String   @default("") // comma-separated
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+}
+
+// Car maintenance records (admin/employee fleet management)
+model MaintenanceRecord {
+  id          String   @id @default(cuid())
+  carId       String
+  type        String   // routine | repair | inspection | cleaning
+  description String
+  cost        Float    @default(0)
+  // scheduled | in_progress | completed
+  status      String   @default("scheduled")
+  scheduledDate DateTime?
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  car         Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
+
+  @@index([carId])
+  @@index([status])
+}
+
 // Activity log — powers the admin "Recent activity" feed
 model Activity {
   id        String   @id @default(cuid())
-  type      String // booking_created | booking_status | payment | complaint | review | car | user
+  type      String // booking_created | booking_status | payment | complaint | review | car | employee | report
   message   String
-  actorId   String?  // admin/user who performed the action
+  actorId   String?  // admin/employee who performed the action
   refId     String?  // related entity id
   createdAt DateTime @default(now())
 

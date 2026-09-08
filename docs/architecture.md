@@ -4,6 +4,36 @@
 
 ---
 
+## 0. Three Independent Portals (Architecture Lock v2)
+
+DriveLuxe is a **single full-stack Next.js 16 application** that serves
+**three completely independent portals**. Each portal has its own:
+
+- Route prefix (`/`, `#/employee/*`, `#/admin/*`)
+- Authentication mechanism (separate cookies + JWT payloads)
+- Layout (no shared navbar/footer/account menu)
+- Session validation (independent guards)
+- Design language (customer=gold luxury, employee=teal operator, admin=amber operator)
+
+```
+mainwebsite.com/
+├── Customer App     (#/)           — books cars, writes reviews, earns points
+├── Employee Portal  (#/employee/*) — handles tickets, assists bookings, recommends reviews
+└── Admin Console    (#/admin/*)    — manages everything, 3-step login (email+password+PIN)
+```
+
+| Portal | Route | Login | Auth Cookie | Layout |
+|--------|-------|-------|-------------|--------|
+| Customer | `#/` | email + password | `driveluxe_token` | Navbar + Footer (gold) |
+| Employee | `#/employee/login` | Employee ID (EMP-XXXX) + password | `driveluxe_employee_token` | EmployeeLayout (teal sidebar) |
+| Admin | `#/admin/login` | email + password + 6-digit PIN | `driveluxe_token` (role=admin) | AdminLayout (amber sidebar) |
+
+**Customers never see Employee or Admin navigation.** There are no links to
+either portal anywhere in the customer site. Both are accessible only by
+directly navigating to their login URLs.
+
+---
+
 ## 1. High-Level Architecture
 
 DriveLuxe is a **single full-stack Next.js 16 application** using the App
@@ -60,47 +90,62 @@ Next.js Route Handlers (`/api/*`).
 The Admin Console is a **completely separate application** living inside the
 same Next.js codebase. It has its own:
 
-- **Login** (`#/admin/login`) — rejects non-admin accounts with 403.
-- **Layout** — fixed collapsible sidebar + top search bar + breadcrumbs +
-  dark operator-first UI (no shared navbar/footer with the customer site).
+- **3-step login** (`#/admin/login`) — email → password → 6-digit PIN.
+  Rejects non-admin accounts with 403. Wrong PIN returns to step 1.
+- **Layout** — fixed collapsible sidebar (12 sections) + top search bar +
+  breadcrumbs + dark operator-first UI (amber accents).
 - **Session check** — every `/api/admin/*` route calls `requireAdmin()` which
   verifies both authentication AND `role === 'admin'`.
-- **Routing** — 8 sections via hash routes (`#/admin/dashboard`,
-  `#/admin/cars`, `#/admin/bookings`, `#/admin/customers`,
-  `#/admin/payments`, `#/admin/complaints`, `#/admin/reviews`,
-  `#/admin/settings`).
 
-### Access control
+## 1C. Employee Portal — Separated Architecture
 
-| Visitor | Visits `#/admin/*` | Result |
-|---------|-------------------|--------|
-| Guest (not logged in) | any admin route | Redirect to `#/admin/login` |
-| Logged-in customer | any admin route | **403 Forbidden** page |
-| Logged-in admin | any admin route | Rendered inside AdminLayout |
+The Employee Portal is a **third independent application**:
 
-The customer navbar and footer contain **no link** to the admin console. It
-is accessible only by directly navigating to `#/admin/login`.
+- **Login** (`#/employee/login`) — Employee ID (EMP-XXXX) + password (NOT email).
+  Suspended employees are rejected. Employees never self-register — admin creates them.
+- **Layout** — fixed collapsible sidebar (8 sections) + top bar + breadcrumbs +
+  dark operator UI with **teal accents** (distinct from admin's amber).
+- **Session check** — every `/api/employee/*` route calls `requireEmployee()`
+  which reads a separate `driveluxe_employee_token` cookie. Employee and admin
+  tokens are mutually exclusive (an admin token cannot access employee endpoints
+  and vice versa).
 
-### Status workflows (enforced server-side)
+## 1D. Permission Matrix
 
-**Bookings:** `booked → paid → pickup → in_use → returned → completed`
-(cancellation allowed only from `booked` or `paid`). Invalid transitions
-return HTTP 400 with an explanatory message. Payment auto-syncs: when a
-booking moves to `paid`, its payment moves to `paid`; cancellation refunds
-the payment and reverses awarded points.
+| Action | Customer | Employee | Admin |
+|--------|----------|----------|-------|
+| Book Car | ✅ | ❌ | ❌ |
+| Cancel Own Booking | ✅ | ❌ | Override |
+| Write Review | ✅ | ❌ | ❌ |
+| Reply to Review | ❌ | Recommend | Approve (final) |
+| View Complaints | Own | Assigned | All |
+| Resolve Complaint | ❌ | Yes (→ waiting approval) | Final (close) |
+| Manage Cars | ❌ | Limited (view) | Full |
+| Manage Payments | ❌ | View | Full |
+| Refund | ❌ | Request | Approve |
+| Create Employee | ❌ | ❌ | Yes |
+| Suspend Employee | ❌ | ❌ | Yes |
+| View Reports | ❌ | Own | All |
 
-**Complaints:** `open → in_progress → resolved → closed`. Any forward
-transition is allowed; closed is final.
+## 1E. Workflows
 
-**Payments:** `pending → paid → refunded`. Paid syncs the booking to `paid`;
-refunded syncs the booking to `cancelled`.
+**Review moderation:** Customer posts → `pending` → Employee reviews +
+recommends (approve/reject/flag) → `recommended` → Admin final decision →
+`published` or `rejected`. Only `published` reviews are visible to customers.
 
-### Soft delete (archive)
+**Complaint resolution:** Customer submits → `open` → Employee self-assigns →
+`assigned` → `working` → `solved` → `waiting_approval` → Admin reviews +
+closes → `closed`. Admin can reopen. **Employees cannot close tickets.**
 
-No admin table performs hard deletes. Every manageable entity (Car, Booking,
-Customer, SupportTicket, Review) has an `archived` boolean flag. Admin tables
-default to showing non-archived items; a "Show archived" toggle reveals them.
-Bulk archive/restore is supported on Cars, Bookings, and Complaints.
+**Booking lifecycle:** `booked → paid → pickup → in_use → returned → completed`
+(cancel from booked/paid). Payment auto-syncs: paid booking → payment paid;
+cancellation → payment refunded + points reversed.
+
+**Employee report audit trail:** Every employee action (ticket resolved, review
+recommended, booking assisted, refund requested, call logged) creates an
+`EmployeeReport` with status `pending`. Admin reviews and approves/rejects.
+Approved ticket-resolution reports auto-close the ticket; approved review-
+recommendation reports auto-publish/reject the review.
 
 ---
 

@@ -18,8 +18,9 @@ export async function GET(req: Request) {
       return ok({ reviews: [] })
     }
 
+    // Only published reviews are visible to the public
     const reviews = await db.review.findMany({
-      where: { carId },
+      where: { carId, status: 'published', archived: false },
       orderBy: { createdAt: 'desc' },
       include: {
         user: { select: { id: true, name: true } },
@@ -67,16 +68,22 @@ export async function POST(req: Request) {
       return fail('You have already reviewed this car.', 409)
     }
 
+    // New reviews start as 'pending' — employee reviews, then admin approves
     const review = await db.review.create({
       data: {
         userId: user.id,
         carId: data.carId,
         rating: data.rating,
         comment: data.comment,
+        status: 'pending',
       },
       include: {
         user: { select: { id: true, name: true } },
       },
+    })
+
+    await db.activity.create({
+      data: { type: 'review', message: `${user.name} submitted a review (rating ${data.rating}) — pending employee review` },
     })
 
     return created({ review })

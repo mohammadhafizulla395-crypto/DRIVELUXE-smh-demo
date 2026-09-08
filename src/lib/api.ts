@@ -1,6 +1,7 @@
 import axios from 'axios'
 import type {
   AuthUser,
+  AuthEmployee,
   Car,
   Booking,
   Review,
@@ -11,6 +12,12 @@ import type {
   Activity,
   AdminStats,
   UpcomingPickup,
+  Employee,
+  EmployeeReport,
+  Task,
+  CustomerCall,
+  KnowledgeBaseArticle,
+  Attendance,
 } from '@/types'
 import type { CarInput } from '@/lib/validations'
 
@@ -98,12 +105,135 @@ export const authApi = {
 }
 
 /* --------------------------- admin auth ------------------------- */
-// Separate admin portal login — only accepts admin accounts.
+// Separate admin portal login — 3-step: email + password + 6-digit PIN
 export const adminAuthApi = {
-  login: (data: { email: string; password: string }) =>
+  login: (data: { email: string; password: string; pin: string }) =>
     api
       .post<{ user: AuthUser }>('/api/admin/login', data)
       .then((r) => r.data),
+}
+
+/* ------------------------- employee auth ------------------------ */
+// Employee portal login — Employee ID (EMP-XXXX) + password
+export const employeeAuthApi = {
+  login: (data: { employeeId: string; password: string }) =>
+    api
+      .post<{ employee: AuthEmployee }>('/api/employee/login', data)
+      .then((r) => r.data),
+  me: () =>
+    api.get<{ employee: AuthEmployee }>('/api/employee/me').then((r) => r.data),
+  logout: () => api.post('/api/employee/logout').then((r) => r.data),
+}
+
+/* --------------------------- employee --------------------------- */
+export interface EmployeeTableQuery {
+  search?: string
+  status?: string
+  sort?: string
+  page?: number
+  limit?: number
+  role?: string
+  type?: string
+  scope?: string
+}
+
+export const employeeApi = {
+  stats: () =>
+    api
+      .get<{ pendingTasks: number; assignedTickets: number; resolvedToday: number; pendingReports: number }>(
+        '/api/employee/stats',
+      )
+      .then((r) => r.data),
+
+  tickets: {
+    list: (q: EmployeeTableQuery = {}) => {
+      const params = new URLSearchParams()
+      for (const [k, v] of Object.entries(q)) {
+        if (v === undefined || v === '' || v === null) continue
+        params.append(k, String(v))
+      }
+      return api
+        .get<{ tickets: SupportTicket[] }>(`/api/employee/tickets?${params.toString()}`)
+        .then((r) => r.data)
+    },
+    update: (id: string, data: { status: string; resolution?: string }) =>
+      api.patch(`/api/employee/tickets/${id}`, data).then((r) => r.data),
+  },
+
+  tasks: {
+    list: (status?: string) =>
+      api
+        .get<{ tasks: Task[] }>(`/api/employee/tasks${status ? `?status=${status}` : ''}`)
+        .then((r) => r.data),
+    update: (id: string, status: string) =>
+      api.patch(`/api/employee/tasks/${id}`, { status }).then((r) => r.data),
+  },
+
+  calls: {
+    list: () => api.get<{ calls: CustomerCall[] }>('/api/employee/calls').then((r) => r.data),
+    create: (data: {
+      customerName: string
+      customerPhone: string
+      userId?: string
+      bookingId?: string
+      subject: string
+      notes?: string
+      outcome?: string
+      duration?: number
+    }) => api.post<{ call: CustomerCall }>('/api/employee/calls', data).then((r) => r.data),
+  },
+
+  performance: () =>
+    api
+      .get<{
+        metrics: { ticketsResolved: number; averageResponse: number; customerRating: number; pendingTasks: number }
+        recentReports: EmployeeReport[]
+      }>('/api/employee/performance')
+      .then((r) => r.data),
+
+  attendance: () =>
+    api.get<{ attendance: Attendance[] }>('/api/employee/attendance').then((r) => r.data),
+
+  knowledgeBase: (category?: string) =>
+    api
+      .get<{ articles: KnowledgeBaseArticle[] }>(
+        `/api/employee/knowledge-base${category ? `?category=${category}` : ''}`,
+      )
+      .then((r) => r.data),
+
+  reports: () =>
+    api.get<{ reports: EmployeeReport[] }>('/api/employee/reports').then((r) => r.data),
+
+  bookings: {
+    list: (q: EmployeeTableQuery = {}) => {
+      const params = new URLSearchParams()
+      for (const [k, v] of Object.entries(q)) {
+        if (v === undefined || v === '' || v === null) continue
+        params.append(k, String(v))
+      }
+      return api.get<{ bookings: Booking[] }>(`/api/employee/bookings?${params.toString()}`).then((r) => r.data)
+    },
+    assist: (id: string, data: { action: string; newEndDate?: string; issueDescription?: string }) =>
+      api.patch(`/api/employee/bookings/${id}`, data).then((r) => r.data),
+  },
+
+  reviews: {
+    list: (status = 'pending') =>
+      api
+        .get<{ reviews: Review[] }>(`/api/employee/reviews?status=${status}`)
+        .then((r) => r.data),
+    recommend: (id: string, data: { recommendation: string; note?: string }) =>
+      api.patch(`/api/employee/reviews/${id}`, data).then((r) => r.data),
+  },
+
+  customers: {
+    list: (search?: string) =>
+      api
+        .get<{ customers: Array<Record<string, unknown>> }>(
+          `/api/employee/customers${search ? `?search=${search}` : ''}`,
+        )
+        .then((r) => r.data),
+  },
 }
 
 /* ----------------------------- cars ----------------------------- */
@@ -311,13 +441,37 @@ export const adminApi = {
       api.post<{ updated: number }>('/api/admin/complaints/bulk', { ids, action }).then((r) => r.data),
   },
 
-  // Reviews
+  // Reviews (with moderation workflow)
   reviews: {
     list: (q: AdminTableQuery = {}) =>
       api
         .get<{ reviews: Review[]; pagination: Pagination }>(`/api/admin/reviews?${buildQuery(q)}`)
         .then((r) => r.data),
+    decide: (id: string, status: string) =>
+      api.patch<{ review: Review }>(`/api/admin/reviews/${id}`, { status }).then((r) => r.data),
     archive: (id: string, archived: boolean) =>
       api.patch<{ review: Review }>(`/api/admin/reviews/${id}`, { archived }).then((r) => r.data),
+  },
+
+  // Employees (employee management module)
+  employees: {
+    list: (q: AdminTableQuery = {}) =>
+      api
+        .get<{ employees: Employee[]; pagination: Pagination }>(`/api/admin/employees?${buildQuery(q)}`)
+        .then((r) => r.data),
+    create: (data: { name: string; email: string; phone?: string; role: string }) =>
+      api.post<{ employee: Employee & { defaultPassword?: string } }>('/api/admin/employees', data).then((r) => r.data),
+    manage: (id: string, data: { action: string; role?: string; name?: string; phone?: string }) =>
+      api.patch<{ message: string }>(`/api/admin/employees/${id}`, data).then((r) => r.data),
+  },
+
+  // Reports (employee audit trail — admin approves/rejects)
+  reports: {
+    list: (q: AdminTableQuery = {}) =>
+      api
+        .get<{ reports: EmployeeReport[]; pagination: Pagination }>(`/api/admin/reports?${buildQuery(q)}`)
+        .then((r) => r.data),
+    review: (id: string, data: { status: string; adminNote?: string }) =>
+      api.patch<{ report: EmployeeReport }>(`/api/admin/reports/${id}`, data).then((r) => r.data),
   },
 }

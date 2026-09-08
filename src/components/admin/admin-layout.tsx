@@ -20,6 +20,10 @@ import {
   PanelLeftClose,
   Search,
   Bell,
+  Activity,
+  Wrench,
+  Briefcase,
+  FileText,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -45,24 +49,32 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { label: 'Dashboard', view: 'admin', icon: LayoutDashboard },
-  { label: 'Cars', view: 'admin-cars', icon: CarIcon },
+  { label: 'Operations', view: 'admin-operations', icon: Activity },
   { label: 'Bookings', view: 'admin-bookings', icon: CalendarCheck },
+  { label: 'Fleet', view: 'admin-cars', icon: CarIcon },
+  { label: 'Maintenance', view: 'admin-maintenance', icon: Wrench },
+  { label: 'Employees', view: 'admin-employees', icon: Briefcase },
   { label: 'Customers', view: 'admin-customers', icon: Users },
   { label: 'Payments', view: 'admin-payments', icon: CreditCard },
-  { label: 'Complaints', view: 'admin-complaints', icon: LifeBuoy },
   { label: 'Reviews', view: 'admin-reviews', icon: Star },
+  { label: 'Complaints', view: 'admin-complaints', icon: LifeBuoy },
+  { label: 'Reports', view: 'admin-reports', icon: FileText },
   { label: 'Settings', view: 'admin-settings', icon: SettingsIcon },
 ]
 
 function breadcrumbFor(view: ViewName): string {
   const map: Partial<Record<ViewName, string>> = {
     admin: 'Dashboard',
-    'admin-cars': 'Cars',
+    'admin-operations': 'Operations',
+    'admin-cars': 'Fleet',
     'admin-bookings': 'Bookings',
     'admin-customers': 'Customers',
     'admin-payments': 'Payments',
     'admin-complaints': 'Complaints',
     'admin-reviews': 'Reviews',
+    'admin-employees': 'Employees',
+    'admin-reports': 'Reports',
+    'admin-maintenance': 'Maintenance',
     'admin-settings': 'Settings',
   }
   return map[view] ?? 'Dashboard'

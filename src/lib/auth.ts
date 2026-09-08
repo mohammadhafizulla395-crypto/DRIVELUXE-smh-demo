@@ -5,6 +5,7 @@ import { db } from './db'
 import type { UserRole } from '@/types'
 
 const COOKIE_NAME = 'driveluxe_token'
+const EMPLOYEE_COOKIE_NAME = 'driveluxe_employee_token'
 const TOKEN_TTL_DAYS = 7
 
 // In production, a missing JWT_SECRET must fail loudly. In dev, fall back.
@@ -26,6 +27,13 @@ export interface JwtPayload {
   role: UserRole
 }
 
+// Employee JWT payload — separate session, separate cookie
+export interface EmployeeJwtPayload {
+  employeeId: string // internal db id
+  employeeCode: string // EMP-XXXX
+  role: string // support | fleet | customer_care
+}
+
 export interface AuthUser {
   id: string
   name: string
@@ -33,6 +41,19 @@ export interface AuthUser {
   role: UserRole
   phone: string | null
   points: number
+}
+
+export interface AuthEmployee {
+  id: string
+  employeeId: string
+  name: string
+  email: string
+  phone: string | null
+  role: string
+  status: string
+  ticketsResolved: number
+  avgResponseMin: number
+  customerRating: number
 }
 
 /* ------------------------------ password ------------------------------ */
@@ -54,9 +75,25 @@ export function signToken(payload: JwtPayload): string {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: `${TOKEN_TTL_DAYS}d` })
 }
 
+export function signEmployeeToken(payload: EmployeeJwtPayload): string {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: `${TOKEN_TTL_DAYS}d` })
+}
+
 export function verifyToken(token: string): JwtPayload | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload
+    const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload & { employeeId?: string }
+    // Employee tokens must not be accepted as user tokens
+    if (decoded.employeeId) return null
+    return decoded
+  } catch {
+    return null
+  }
+}
+
+export function verifyEmployeeToken(token: string): EmployeeJwtPayload | null {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as EmployeeJwtPayload & { userId?: string }
+    if (!decoded.employeeId) return null
     return decoded
   } catch {
     return null
@@ -77,14 +114,36 @@ export async function setAuthCookie(token: string) {
   })
 }
 
+export async function setEmployeeCookie(token: string) {
+  const expires = new Date(Date.now() + TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000)
+  const store = await cookies()
+  store.set(EMPLOYEE_COOKIE_NAME, token, {
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    expires,
+  })
+}
+
 export async function clearAuthCookie() {
   const store = await cookies()
   store.delete(COOKIE_NAME)
 }
 
+export async function clearEmployeeCookie() {
+  const store = await cookies()
+  store.delete(EMPLOYEE_COOKIE_NAME)
+}
+
 export async function getTokenFromCookie(): Promise<string | undefined> {
   const store = await cookies()
   return store.get(COOKIE_NAME)?.value
+}
+
+export async function getEmployeeTokenFromCookie(): Promise<string | undefined> {
+  const store = await cookies()
+  return store.get(EMPLOYEE_COOKIE_NAME)?.value
 }
 
 /* ------------------------- request helpers ---------------------------- */
@@ -110,4 +169,34 @@ export async function getUserFromRequest(): Promise<AuthUser | null> {
     },
   })
   return user
+}
+
+/**
+ * Reads the employee JWT from its separate cookie, verifies it, returns the employee.
+ * Returns null when unauthenticated / token invalid / employee suspended.
+ */
+export async function getEmployeeFromRequest(): Promise<AuthEmployee | null> {
+  const token = await getEmployeeTokenFromCookie()
+  if (!token) return null
+  const payload = verifyEmployeeToken(token)
+  if (!payload) return null
+  const emp = await db.employee.findUnique({
+    where: { id: payload.employeeId },
+    select: {
+      id: true,
+      employeeId: true,
+      name: true,
+      email: true,
+      phone: true,
+      role: true,
+      status: true,
+      ticketsResolved: true,
+      avgResponseMin: true,
+      customerRating: true,
+    },
+  })
+  if (!emp) return null
+  // Suspended employees cannot use the portal
+  if (emp.status === 'suspended') return null
+  return emp
 }

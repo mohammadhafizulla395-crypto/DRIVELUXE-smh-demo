@@ -287,7 +287,7 @@ const cars: CarSeed[] = [
 async function main() {
   console.log('🌱 Seeding DriveLuxe...')
 
-  // Admin user
+  // Admin user — with 6-digit PIN for 3-step login
   const adminEmail = 'admin@driveluxe.com'
   const existingAdmin = await db.user.findUnique({ where: { email: adminEmail } })
   if (!existingAdmin) {
@@ -298,9 +298,10 @@ async function main() {
         email: adminEmail,
         password,
         role: 'admin',
+        pin: '246810', // 6-digit admin PIN (demo)
       },
     })
-    console.log('✅ Created admin user (admin@driveluxe.com / admin123)')
+    console.log('✅ Created admin user (admin@driveluxe.com / admin123 / PIN 246810)')
   } else {
     console.log('ℹ️  Admin user already exists')
   }
@@ -448,6 +449,154 @@ async function main() {
       },
     })
     console.log('✅ Created sample review')
+  }
+
+  /* ============ EMPLOYEE PORTAL SEED ============ */
+
+  // Employees (admin creates them; they never self-register)
+  if ((await db.employee.count()) === 0) {
+    const empPass = await bcrypt.hash('emp123', 10)
+    await db.employee.createMany({
+      data: [
+        {
+          employeeId: 'EMP-1001',
+          name: 'Sara Chen',
+          email: 'sara@driveluxe.com',
+          phone: '+1 555 0201',
+          password: empPass,
+          role: 'support',
+          status: 'active',
+          ticketsResolved: 45,
+          avgResponseMin: 8,
+          customerRating: 4.8,
+        },
+        {
+          employeeId: 'EMP-1002',
+          name: 'John Martinez',
+          email: 'john@driveluxe.com',
+          phone: '+1 555 0202',
+          password: empPass,
+          role: 'fleet',
+          status: 'active',
+          ticketsResolved: 32,
+          avgResponseMin: 12,
+          customerRating: 4.6,
+        },
+        {
+          employeeId: 'EMP-1003',
+          name: 'Ali Hassan',
+          email: 'ali@driveluxe.com',
+          phone: '+1 555 0203',
+          password: empPass,
+          role: 'customer_care',
+          status: 'suspended',
+          ticketsResolved: 18,
+          avgResponseMin: 15,
+          customerRating: 4.2,
+        },
+      ],
+    })
+    console.log('✅ Created 3 employees (EMP-1001/1002/1003, password: emp123)')
+  } else {
+    console.log(`ℹ️  Employees already exist (${await db.employee.count()})`)
+  }
+
+  const sara = await db.employee.findUnique({ where: { employeeId: 'EMP-1001' } })
+
+  // Assign the open ticket to Sara
+  if (sara) {
+    const openTicket = await db.supportTicket.findFirst({ where: { status: 'open' } })
+    if (openTicket) {
+      await db.supportTicket.update({
+        where: { id: openTicket.id },
+        data: { status: 'assigned', assignedEmployeeId: sara.id },
+      })
+    }
+
+    // Tasks for Sara
+    if ((await db.task.count()) === 0) {
+      await db.task.createMany({
+        data: [
+          { employeeId: sara.id, title: 'Follow up on booking pickup change', description: 'Customer requested Airport Terminal pickup for booking starting tomorrow.', status: 'pending' },
+          { employeeId: sara.id, title: 'Review pending customer reviews', description: '3 reviews awaiting verification before admin approval.', status: 'pending' },
+          { employeeId: sara.id, title: 'Log morning customer calls', description: 'Record call outcomes from the morning shift.', status: 'done' },
+        ],
+      })
+      console.log('✅ Created sample tasks for Sara')
+    }
+
+    // A customer call log
+    if ((await db.customerCall.count()) === 0 && demoUser) {
+      await db.customerCall.create({
+        data: {
+          employeeId: sara.id,
+          userId: demoUser.id,
+          customerName: demoUser.name,
+          customerPhone: demoUser.phone || '+1 555 0100',
+          subject: 'Pickup location inquiry',
+          notes: 'Customer called to confirm if pickup can be changed to Airport Terminal. Advised it is possible and will update booking.',
+          outcome: 'resolved',
+          duration: 5,
+        },
+      })
+    }
+
+    // Employee report (audit trail)
+    if ((await db.employeeReport.count()) === 0) {
+      await db.employeeReport.create({
+        data: {
+          employeeId: sara.id,
+          type: 'ticket_resolved',
+          description: 'Resolved ticket #1 — helped customer with booking pickup change',
+          status: 'pending',
+        },
+      })
+    }
+  }
+
+  // Knowledge base articles
+  if ((await db.knowledgeBase.count()) === 0) {
+    await db.knowledgeBase.createMany({
+      data: [
+        { title: 'How to handle pickup location changes', category: 'booking', content: 'Customers can request pickup location changes up to 24h before the booking start. Verify availability at the new location, update the booking, and confirm with the customer.', tags: 'pickup, booking, location' },
+        { title: 'Refund request process', category: 'refund', content: 'Employees cannot approve refunds. Collect the reason, verify the booking details, and submit a refund request. Admin reviews and approves.', tags: 'refund, payment, approval' },
+        { title: 'Handling customer complaints', category: 'general', content: 'Always listen first, acknowledge the issue, and log the complaint. Assign to yourself, work on a resolution, then submit for admin approval to close.', tags: 'complaint, escalation' },
+        { title: 'Fleet inspection checklist', category: 'fleet', content: 'Before each handover: check fuel level, tire pressure, body damage, interior cleanliness, and document with photos.', tags: 'fleet, inspection, handover' },
+      ],
+    })
+    console.log('✅ Created knowledge base articles')
+  }
+
+  // Attendance for today (Sara)
+  if (sara && (await db.attendance.count()) === 0) {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const checkIn = new Date(today)
+    checkIn.setHours(9, 2, 0, 0)
+    await db.attendance.create({
+      data: {
+        employeeId: sara.id,
+        date: today,
+        checkIn,
+        status: 'present',
+      },
+    })
+  }
+
+  // Maintenance record for first car
+  const firstCarForMaint = await db.car.findFirst({ orderBy: { createdAt: 'asc' } })
+  if (firstCarForMaint && (await db.maintenanceRecord.count()) === 0) {
+    const scheduled = new Date()
+    scheduled.setDate(scheduled.getDate() + 3)
+    await db.maintenanceRecord.create({
+      data: {
+        carId: firstCarForMaint.id,
+        type: 'routine',
+        description: 'Scheduled 10,000 km service — oil change, tire rotation, brake inspection.',
+        status: 'scheduled',
+        scheduledDate: scheduled,
+      },
+    })
   }
 
   console.log('🎉 Seed complete!')

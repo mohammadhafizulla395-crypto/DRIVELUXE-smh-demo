@@ -6,6 +6,48 @@ These rules govern development. Read before writing any code.
 
 ---
 
+## 0. Three-Portal Separation (LOCKED — Architecture v2)
+
+The application serves **three independent portals**. These rules are
+non-negotiable:
+
+1. **Customer** (`#/`) — email/password login. Books cars, writes reviews,
+   earns points. **Must never see any link to Employee or Admin portals.**
+2. **Employee** (`#/employee/*`) — Employee ID (EMP-XXXX)/password login.
+   Handles tickets, assists bookings, recommends reviews, submits reports.
+   **Cannot book cars, write reviews, earn points, close tickets, refund
+   money, or approve payments.**
+3. **Admin** (`#/admin/*`) — 3-step login (email → password → 6-digit PIN).
+   Manages everything. **Only role that can close tickets, approve refunds,
+   publish reviews, and create/suspend employees.**
+
+### Separate sessions
+- Customer/Admin use `driveluxe_token` cookie (JWT with `userId` + `role`).
+- Employee uses `driveluxe_employee_token` cookie (separate JWT with
+  `employeeId` + `employeeCode` + `role`).
+- The two token types are **mutually exclusive** — `verifyToken` rejects
+  employee tokens and vice versa. An admin cannot access employee endpoints;
+  an employee cannot access admin endpoints.
+
+### Separate layouts
+- `Navbar` + `Footer` (customer, gold accents)
+- `EmployeeLayout` (teal accents, Briefcase branding)
+- `AdminLayout` (amber accents, Shield branding)
+- **No shared account dropdown between roles.**
+
+### Permission matrix (enforced server-side)
+See `architecture.md` §1D. Every API route calls the appropriate guard:
+- `/api/auth/*`, `/api/cars/*`, `/api/bookings/*`, `/api/reviews/*`,
+  `/api/support`, `/api/points` → `getUserFromRequest()` (customer)
+- `/api/employee/*` → `requireEmployee()` (employee)
+- `/api/admin/*` → `requireAdmin()` (admin only)
+
+### Employee creation
+Employees **never self-register**. Only an admin can create employee accounts
+via `/api/admin/employees`. Default temp password is `emp123`.
+
+---
+
 ## 1. Architecture Rules (LOCKED)
 
 - **Stack is locked:** Next.js 16 (App Router) + TypeScript + Tailwind 4 +

@@ -13,6 +13,7 @@ import { CatalogView } from '@/components/cars/catalog-view'
 import { CarDetailView } from '@/components/cars/car-detail-view'
 import { BookingView } from '@/components/booking/booking-view'
 import { UserDashboard } from '@/components/dashboard/user-dashboard'
+// Admin portal
 import { AdminLoginForm } from '@/components/admin/admin-login-form'
 import { AdminLayout } from '@/components/admin/admin-layout'
 import { AdminForbidden } from '@/components/admin/admin-forbidden'
@@ -23,7 +24,21 @@ import { AdminCustomers } from '@/components/admin/sections/admin-customers'
 import { AdminPayments } from '@/components/admin/sections/admin-payments'
 import { AdminComplaints } from '@/components/admin/sections/admin-complaints'
 import { AdminReviews } from '@/components/admin/sections/admin-reviews'
+import { AdminEmployees } from '@/components/admin/sections/admin-employees'
+import { AdminReports } from '@/components/admin/sections/admin-reports'
 import { AdminSettings } from '@/components/admin/sections/admin-settings'
+// Employee portal
+import { EmployeeLoginForm } from '@/components/employee/employee-login-form'
+import { EmployeeLayout } from '@/components/employee/employee-layout'
+import { EmployeeDashboard } from '@/components/employee/sections/employee-dashboard'
+import { EmployeeTasks } from '@/components/employee/sections/employee-tasks'
+import { EmployeeBookings } from '@/components/employee/sections/employee-bookings'
+import { EmployeeTickets } from '@/components/employee/sections/employee-tickets'
+import { EmployeeCalls } from '@/components/employee/sections/employee-calls'
+import { EmployeeKnowledge } from '@/components/employee/sections/employee-knowledge'
+import { EmployeePerformance } from '@/components/employee/sections/employee-performance'
+import { EmployeeAttendance } from '@/components/employee/sections/employee-attendance'
+// Shared
 import {
   PrivacyView,
   TermsView,
@@ -36,15 +51,23 @@ import { PointsView } from '@/components/dashboard/points-view'
 import { MyReviewsView } from '@/components/dashboard/my-reviews-view'
 import { useUIStore, initHashRouter } from '@/store/ui-store'
 import { useAuthStore } from '@/store/auth-store'
+import { useEmployeeStore } from '@/store/employee-store'
 
 export default function Home() {
   const { view, selectedCarId, navigate, syncFromHash } = useUIStore()
   const { loading, hydrated, isAuthenticated, isAdmin, fetchUser } =
     useAuthStore()
+  const {
+    loading: empLoading,
+    hydrated: empHydrated,
+    isAuthenticated: empAuthed,
+    fetchEmployee,
+  } = useEmployeeStore()
 
-  // Restore session once on mount + init hash router
+  // Restore sessions once on mount + init hash router
   useEffect(() => {
     if (!hydrated) fetchUser()
+    if (!empHydrated) fetchEmployee()
     initHashRouter()
     return () => {
       if (typeof window !== 'undefined') {
@@ -53,8 +76,7 @@ export default function Home() {
     }
   }, [])
 
-  // Auth guards: redirect protected views to login (main-site only;
-  // admin views are guarded in the admin block below).
+  // Customer auth guard (main-site protected views only)
   useEffect(() => {
     const protectedViews = [
       'profile',
@@ -83,7 +105,7 @@ export default function Home() {
   }, [view, selectedCarId])
 
   // Initial session bootstrap
-  if (loading && !hydrated) {
+  if ((loading && !hydrated) || (empLoading && !empHydrated && view.startsWith('employee'))) {
     return (
       <div className="min-h-screen grid place-items-center bg-background">
         <div className="flex flex-col items-center gap-3">
@@ -94,22 +116,73 @@ export default function Home() {
     )
   }
 
-  // ---------- Separated Admin Console ----------
-  // Fully separate from the main site: own login, own layout (sidebar + topbar),
-  // own session checks. Normal users get a 403; guests redirect to admin login.
+  // ===================== EMPLOYEE PORTAL (separated) =====================
+  const employeeViews = [
+    'employee',
+    'employee-tasks',
+    'employee-bookings',
+    'employee-tickets',
+    'employee-calls',
+    'employee-knowledge',
+    'employee-performance',
+    'employee-attendance',
+  ]
+
+  if (view === 'employee-login') {
+    if (empAuthed) {
+      navigate('employee')
+      return null
+    }
+    return <EmployeeLoginForm />
+  }
+
+  if (view === 'employee-forbidden') {
+    return <AdminForbidden /> // reuse the 403 page
+  }
+
+  if (employeeViews.includes(view)) {
+    if (!empHydrated) {
+      return (
+        <div className="min-h-screen grid place-items-center bg-background">
+          <Loader2 className="h-8 w-8 animate-spin text-teal-400" />
+        </div>
+      )
+    }
+    if (!empAuthed) {
+      navigate('employee-login')
+      return null
+    }
+    return (
+      <EmployeeLayout>
+        {view === 'employee' && <EmployeeDashboard />}
+        {view === 'employee-tasks' && <EmployeeTasks />}
+        {view === 'employee-bookings' && <EmployeeBookings />}
+        {view === 'employee-tickets' && <EmployeeTickets />}
+        {view === 'employee-calls' && <EmployeeCalls />}
+        {view === 'employee-knowledge' && <EmployeeKnowledge />}
+        {view === 'employee-performance' && <EmployeePerformance />}
+        {view === 'employee-attendance' && <EmployeeAttendance />}
+      </EmployeeLayout>
+    )
+  }
+
+  // ===================== ADMIN CONSOLE (separated) =====================
   const adminViews = [
     'admin',
+    'admin-operations',
     'admin-cars',
     'admin-bookings',
     'admin-customers',
     'admin-payments',
     'admin-complaints',
     'admin-reviews',
+    'admin-employees',
+    'admin-reports',
+    'admin-maintenance',
     'admin-settings',
   ]
 
   if (view === 'admin-login') {
-    // Already-authed admin going to /admin/login → skip to dashboard
     if (isAuthenticated && isAdmin) {
       navigate('admin')
       return null
@@ -129,30 +202,32 @@ export default function Home() {
         </div>
       )
     }
-    // Guest → redirect to admin login
     if (!isAuthenticated) {
       navigate('admin-login')
       return null
     }
-    // Authenticated but NOT admin → 403
     if (!isAdmin) {
       return <AdminForbidden />
     }
     return (
       <AdminLayout>
         {view === 'admin' && <AdminDashboard />}
+        {view === 'admin-operations' && <AdminDashboard />} {/* Operations = dashboard for now */}
         {view === 'admin-cars' && <AdminCars />}
         {view === 'admin-bookings' && <AdminBookings />}
         {view === 'admin-customers' && <AdminCustomers />}
         {view === 'admin-payments' && <AdminPayments />}
         {view === 'admin-complaints' && <AdminComplaints />}
         {view === 'admin-reviews' && <AdminReviews />}
+        {view === 'admin-employees' && <AdminEmployees />}
+        {view === 'admin-reports' && <AdminReports />}
+        {view === 'admin-maintenance' && <AdminCars />} {/* Maintenance reuses fleet view for now */}
         {view === 'admin-settings' && <AdminSettings />}
       </AdminLayout>
     )
   }
 
-  // ---------- Main Site ----------
+  // ===================== CUSTOMER SITE (main) =====================
   const isAuthView = view === 'login' || view === 'register'
 
   return (
