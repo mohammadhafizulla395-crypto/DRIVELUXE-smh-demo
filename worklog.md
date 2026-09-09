@@ -345,3 +345,31 @@ Stage Summary:
 - 1 dev-only issue: Next.js overlay blocks sidebar logout button
 - Avatar dropdowns didn't open via automated click (works in manual usage)
 - All pages render with real data
+
+---
+Task ID: P4
+Agent: main (Phase 4 — Supabase PostgreSQL Migration)
+Task: Migrate Prisma database from SQLite to Supabase PostgreSQL without changing application code
+
+Work Log:
+- Backed up SQLite database to db/custom.db.sqlite-backup
+- Updated .env with Supabase connection strings (DATABASE_URL for PgBouncer runtime, DIRECT_URL for migrations)
+- Updated prisma/schema.prisma: provider sqlite→postgresql, added directUrl=env("DIRECT_URL")
+- Ran prisma generate (regenerated client for PostgreSQL)
+- Ran npx prisma migrate dev --name init_supabase (created migration SQL + applied to Supabase)
+- Seeded Supabase with all existing data (42 records across 13 tables)
+- Verified data: 2 users, 15 cars, 3 employees, 3 bookings, 3 payments, 1 review, 1 ticket, 3 tasks, 4 KB articles, etc.
+- Verified relation queries work (booking→car→user→payment join)
+- Tested all 3 portals via curl: customer/employee/admin login + data APIs all PASS
+- Tested all 3 portals via browser: dashboards render with real Supabase data, zero console errors
+- Verified cross-portal isolation still enforced
+- Fixed system env override: sandbox had system-level DATABASE_URL=sqlite that overrode .env; resolved by unset DATABASE_URL before dev server start
+- Updated memory.md (Phase 4 section) and architecture.md (database diagram updated to Supabase)
+
+Stage Summary:
+- Migration: complete, zero data loss
+- All 42 records in Supabase PostgreSQL
+- All 3 portals verified working (curl + browser)
+- Cross-portal isolation intact
+- SQLite backup preserved at db/custom.db.sqlite-backup
+- Migration file: prisma/migrations/20260909152732_init_supabase/migration.sql

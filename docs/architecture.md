@@ -77,9 +77,14 @@ Next.js Route Handlers (`/api/*`).
 └──────────────────────────┬──────────────────────────────┘
                            │ Prisma Client
 ┌──────────────────────────▼──────────────────────────────┐
-│                 SQLite (file-based DB)                   │
+│            Supabase PostgreSQL (Phase 4)                  │
 │   Tables: User, Car, Booking, Review, SupportTicket,    │
-│           PointTransaction, Payment, Activity            │
+│           PointTransaction, Payment, Activity,           │
+│           Employee, EmployeeReport, Task, CustomerCall,  │
+│           KnowledgeBase, Attendance, MaintenanceRecord   │
+│                                                          │
+│   Runtime: DATABASE_URL (PgBouncer :6543)                │
+│   Migrations: DIRECT_URL (direct :5432)                  │
 └─────────────────────────────────────────────────────────┘
 ```
 

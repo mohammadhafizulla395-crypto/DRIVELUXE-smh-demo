@@ -8,9 +8,69 @@ This is the **living status document**. Update after every completed feature.
 
 ## Current Status
 
-- **Current Phase:** Phase 2.8 — Customer Dashboard + Complete QA & Acceptance Testing — COMPLETE
-- **Last Updated:** Customer Dashboard built (sidebar, cards, timeline, payments, notifications); comprehensive QA passed (44 PASS, 0 FAIL).
-- **Build State:** Lint clean; all 3 portals verified end-to-end; ready for Phase 3.
+- **Current Phase:** Phase 4 — Supabase PostgreSQL Migration — COMPLETE & VERIFIED
+- **Last Updated:** Migrated from SQLite to Supabase PostgreSQL; all 3 portals verified working.
+- **Build State:** Lint clean; all data in Supabase; all APIs + UI verified.
+
+---
+
+## Phase 4 — Supabase PostgreSQL Migration
+
+### What changed
+
+Migrated the database from local SQLite (`db/custom.db`) to **Supabase PostgreSQL**. No application code, portal architecture, or UI was changed — only the database connection.
+
+### Migration details
+
+- **Provider:** `sqlite` → `postgresql`
+- **Schema:** Added `directUrl = env("DIRECT_URL")` for migrations
+- **DATABASE_URL:** Supabase PgBouncer (port 6543) — used for runtime queries
+- **DIRECT_URL:** Supabase direct (port 5432) — used for `prisma migrate` and `prisma db push`
+- **Migration:** `npx prisma migrate dev --name init_supabase` — created `prisma/migrations/20260909152732_init_supabase/migration.sql`
+- **Seed:** All existing data (2 users, 15 cars, 3 employees, 3 bookings, 3 payments, 1 review, 1 ticket, 3 tasks, 4 KB articles, etc.) seeded into Supabase successfully
+- **Backup:** SQLite backup saved at `db/custom.db.sqlite-backup`
+
+### Data verification (42 records in Supabase)
+
+| Table | Count |
+|-------|-------|
+| User | 2 |
+| Car | 15 |
+| Employee | 3 |
+| Booking | 3 |
+| Payment | 3 |
+| Review | 1 |
+| SupportTicket | 1 |
+| Task | 3 |
+| EmployeeReport | 1 |
+| Activity | 4 |
+| KnowledgeBase | 4 |
+| Attendance | 1 |
+| MaintenanceRecord | 1 |
+
+### Portal verification (all PASS)
+
+- ✅ Customer login → Alex Rider, 3195 points, 3 bookings, 3 payments, 6 unread notifications
+- ✅ Employee login → Sara Chen (EMP-1001), 2 pending tasks, 1 assigned ticket
+- ✅ Admin 3-step login → 15 cars, 3 bookings, $3195 revenue, 3 employees
+- ✅ Admin settings → Owner: Hafizulla, 91000527275, hafizullas58@gmail.com
+- ✅ Cross-portal isolation still enforced (customer/employee/admin all blocked from each other's APIs)
+- ✅ Browser: all 3 dashboards render with real data from Supabase, zero console errors
+- ✅ Relation queries (joins) work correctly (booking → car → user → payment)
+
+### Environment variables (.env)
+
+```
+DATABASE_URL="postgresql://...supabase.com:6543/postgres?pgbouncer=true"
+DIRECT_URL="postgresql://...supabase.com:5432/postgres"
+NEXT_PUBLIC_SUPABASE_URL="https://...supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="YOUR_ANON_KEY"
+JWT_SECRET=driveluxe-dev-super-secret-2024
+```
+
+### Note on local development
+
+The sandbox environment had a system-level `DATABASE_URL` (pointing to the old SQLite file) that overrides `.env`. This is resolved by `unset DATABASE_URL` before starting the dev server. In production (Vercel), env vars are set in the Vercel dashboard and this issue does not occur.
 
 ---
 

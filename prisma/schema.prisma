@@ -1,5 +1,5 @@
 // DriveLuxe — Premium Car Rental Platform
-// Prisma schema (SQLite). Lists stored as comma-separated strings.
+// Prisma schema (PostgreSQL via Supabase). Lists stored as comma-separated strings.
 //
 // Three independent portals:
 //   1. Customer  (User with role=user)   — books cars, writes reviews, earns points
@@ -11,8 +11,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 /* ============================= CUSTOMER ============================= */
