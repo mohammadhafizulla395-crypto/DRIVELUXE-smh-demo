@@ -15,7 +15,8 @@ import type { Booking, BookingStatus } from '@/types'
 
 const STEPS: { key: BookingStatus; label: string; icon: typeof Car }[] = [
   { key: 'booked', label: 'Booked', icon: Car },
-  { key: 'paid', label: 'Paid', icon: CreditCard },
+  { key: 'payment_processing', label: 'Payment', icon: CreditCard },
+  { key: 'paid', label: 'Paid', icon: CheckCircle2 },
   { key: 'pickup', label: 'Pickup', icon: Key },
   { key: 'in_use', label: 'In Use', icon: Gauge },
   { key: 'returned', label: 'Returned', icon: RotateCcw },
@@ -24,11 +25,12 @@ const STEPS: { key: BookingStatus; label: string; icon: typeof Car }[] = [
 
 const STEP_ORDER: Record<BookingStatus, number> = {
   booked: 0,
-  paid: 1,
-  pickup: 2,
-  in_use: 3,
-  returned: 4,
-  completed: 5,
+  payment_processing: 1,
+  paid: 2,
+  pickup: 3,
+  in_use: 4,
+  returned: 5,
+  completed: 6,
   cancelled: -1,
 }
 

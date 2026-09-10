@@ -34,6 +34,7 @@ model User {
   reviews          Review[]
   supportTickets   SupportTicket[]
   pointTransactions PointTransaction[]
+  payments         Payment[]
 }
 
 model Car {
@@ -60,8 +61,8 @@ model Car {
   maintenanceRecords MaintenanceRecord[]
 }
 
-// Booking workflow: Booked → Paid → Pickup → In Use → Returned → Completed
-// (cancelled can happen from booked/paid)
+// Booking workflow: Booked → Payment Processing → Paid → Pickup → In Use → Returned → Completed
+// (cancelled can happen from booked/payment_processing/paid)
 model Booking {
   id             String   @id @default(cuid())
   userId         String
@@ -71,7 +72,7 @@ model Booking {
   totalDays      Int
   totalPrice     Float
   pickupLocation String   @default("Downtown Office")
-  // booked | paid | pickup | in_use | returned | completed | cancelled
+  // booked | payment_processing | paid | pickup | in_use | returned | completed | cancelled
   status         String   @default("booked")
   archived       Boolean  @default(false)
   createdAt      DateTime @default(now())
@@ -147,25 +148,34 @@ model PointTransaction {
   @@index([userId])
 }
 
-// Payment workflow: Pending → Paid → Refunded
-// Refund requires admin approval; employees can only request.
+// Payment workflow: Pending → Payment Processing → Paid → Refunded
+// Razorpay integration: create-order → checkout → verify signature → paid
 model Payment {
-  id          String   @id @default(cuid())
-  bookingId   String   @unique
-  userId      String
-  amount      Float
-  method      String   @default("card") // card | cash | transfer
-  // pending | paid | refunded | refund_requested | refund_approved
-  status      String   @default("pending")
-  txnRef      String?  // transaction reference
-  refundReason String?
+  id               String   @id @default(cuid())
+  bookingId        String   @unique
+  userId           String
+  amount           Float
+  method           String   @default("card") // card | cash | transfer | upi | netbanking
+  // pending | processing | paid | refunded | refund_requested | refund_approved
+  status           String   @default("pending")
+  txnRef           String?  // internal transaction reference
+  // Razorpay fields
+  razorpayOrderId  String?  // order_id from Razorpay
+  razorpayPaymentId String? // payment_id from Razorpay
+  razorpaySignature String? // signature for verification
+  verified         Boolean  @default(false) // signature verified?
+  // Refund fields
+  refundReason     String?
   refundRequestedBy String? // employee id who requested
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  razorpayRefundId String?  // refund_id from Razorpay
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  booking          Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
+  @@index([razorpayOrderId])
 }
 
 /* ============================= EMPLOYEE ============================= */

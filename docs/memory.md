@@ -8,9 +8,109 @@ This is the **living status document**. Update after every completed feature.
 
 ## Current Status
 
-- **Current Phase:** Phase 4 — Supabase PostgreSQL Migration — COMPLETE & VERIFIED
-- **Last Updated:** Migrated from SQLite to Supabase PostgreSQL; all 3 portals verified working.
-- **Build State:** Lint clean; all data in Supabase; all APIs + UI verified.
+- **Current Phase:** Phase 5.1 — Razorpay Test Mode Integration — COMPLETE & VERIFIED
+- **Last Updated:** Razorpay payment gateway integrated; Payment Hold workflow implemented; all tests pass.
+- **Build State:** Lint clean; Supabase PostgreSQL; Razorpay Test Mode active.
+
+---
+
+## Phase 5.1 — Razorpay Test Mode Integration
+
+### What changed
+
+Integrated Razorpay Test Mode into the booking flow. No application architecture, portal separation, or UI redesign was changed — only the payment processing layer was added.
+
+### Payment Hold workflow (improved)
+
+Instead of instant confirmation, the booking now goes through a verification step:
+
+```
+Booked → Payment Processing → Payment Verified → Paid → Pickup → In Use → Returned → Completed
+```
+
+If signature verification fails, the booking stays in `payment_processing` and does NOT become `paid`. This prevents false confirmations.
+
+### New booking status
+
+- `payment_processing` — added between `booked` and `paid`
+- Booking enters this state when a Razorpay order is created
+- Booking exits this state only when signature verification succeeds
+
+### New API routes
+
+| Route | Purpose | Auth |
+|-------|---------|------|
+| `POST /api/payments/create-order` | Creates Razorpay order, moves booking to `payment_processing` | Customer |
+| `POST /api/payments/verify` | Verifies Razorpay signature, moves booking to `paid` | Customer |
+| `POST /api/payments/refund` | Initiates Razorpay refund, cancels booking, reverses points | Admin only |
+
+### Payment model (new fields)
+
+- `razorpayOrderId` — order_id from Razorpay
+- `razorpayPaymentId` — payment_id from Razorpay
+- `razorpaySignature` — signature for verification
+- `verified` — boolean (true only after signature verification)
+- `razorpayRefundId` — refund_id from Razorpay
+
+### Customer flow
+
+1. Customer selects car + dates → confirms booking (status: `booked`)
+2. "Pay Now" button appears in booking summary
+3. Click Pay Now → create-order API → Razorpay checkout modal opens
+4. Customer completes payment in Razorpay checkout
+5. Razorpay returns payment_id + order_id + signature
+6. verify API checks signature → if valid: booking → `paid`, points awarded
+7. If signature invalid: booking stays `payment_processing`, error shown
+
+### Employee view
+
+Employees see payment status in the bookings table. **No payment buttons** — employees cannot initiate payments, refunds, or approve transactions.
+
+### Admin view
+
+Admin payments page shows:
+- **Order ID** (Razorpay order_id)
+- **Payment ID** (Razorpay payment_id)
+- **Verified** badge (green checkmark if signature verified)
+- **Transaction ID** (internal txnRef)
+- **Customer** name + email
+- **Amount** (in ₹)
+- **Method** (card, razorpay, upi, etc.)
+- **Status** (pending, processing, paid, refunded)
+- **Refund button** — opens dialog with reason input, calls Razorpay refund API, reverses points, cancels booking
+
+### Environment variables
+
+```
+RAZORPAY_KEY_ID=rzp_test_TaCwpWw6cAE8Ya          # backend only
+RAZORPAY_KEY_SECRET=6HtNIs9bNPfKj737tXtc356D      # backend only — NEVER exposed to client
+NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_TaCwpWw6cAE8Ya  # safe for frontend
+```
+
+### Security
+
+- `RAZORPAY_KEY_SECRET` is only imported in server-side code (`src/lib/razorpay.ts`)
+- `NEXT_PUBLIC_RAZORPAY_KEY_ID` is the only key sent to the frontend (for checkout.js)
+- Signature verification uses HMAC SHA256 (crypto module, server-side)
+- Secret key verified NOT present in client bundle (tested)
+
+### Verification results
+
+- ✅ Customer login + booking creation
+- ✅ Razorpay order created (real order ID: `order_TaDJG5WvfwkEwg...`)
+- ✅ Booking moved to `payment_processing`
+- ✅ Duplicate order creation is idempotent (returns existing order)
+- ✅ Invalid signature rejected (booking stays `payment_processing`, not `paid`)
+- ✅ Admin sees Razorpay Order ID + Payment ID + Verified status
+- ✅ Employee sees payment status (no buttons)
+- ✅ Secret key NOT in client bundle
+- ✅ `bun run lint` — clean, 0 errors
+
+### Demo credentials
+
+- **Customer:** `rider@driveluxe.com` / `rider123` → `#/login` → book a car → Pay Now
+- **Admin:** `admin@driveluxe.com` / `admin123` / PIN `246810` → `#/admin/payments` → view Razorpay transactions + refund
+- **Razorpay Test Card:** `4111 1111 1111 1111` / any expiry / any CVV
 
 ---
 

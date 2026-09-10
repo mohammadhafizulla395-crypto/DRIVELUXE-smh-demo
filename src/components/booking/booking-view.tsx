@@ -9,6 +9,9 @@ import {
   MapPin,
   Calendar as CalendarIcon,
   Check,
+  CreditCard,
+  ShieldCheck,
+  AlertCircle,
 } from 'lucide-react'
 import { Calendar } from '@/components/ui/calendar'
 import { Button } from '@/components/ui/button'
@@ -20,8 +23,10 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
-import { carsApi, bookingsApi, ApiError } from '@/lib/api'
+import { carsApi, bookingsApi, paymentsApi, ApiError } from '@/lib/api'
 import { useUIStore } from '@/store/ui-store'
+import { useAuthStore } from '@/store/auth-store'
+import { loadRazorpayScript, openRazorpayCheckout } from '@/lib/razorpay-client'
 import type { Car } from '@/types'
 import type { DateRange } from 'react-day-picker'
 
@@ -40,6 +45,9 @@ export function BookingView({ carId }: { carId: string }) {
   const [range, setRange] = useState<DateRange | undefined>()
   const [location, setLocation] = useState('Downtown Office')
   const [submitting, setSubmitting] = useState(false)
+  const [bookingId, setBookingId] = useState<string | null>(null)
+  const [paying, setPaying] = useState(false)
+  const { user } = useAuthStore()
 
   useEffect(() => {
     carsApi
@@ -62,20 +70,21 @@ export function BookingView({ carId }: { carId: string }) {
     if (!car || !range?.from || !range?.to) return
     setSubmitting(true)
     try {
-      const { pointsEarned } = await bookingsApi.create({
+      await bookingsApi.create({
         carId: car.id,
         startDate: range.from.toISOString(),
         endDate: range.to.toISOString(),
         pickupLocation: location,
       })
+      // Don't navigate away — show the payment step
+      // We need the booking ID from the response
+      const bookingRes = await bookingsApi.list()
+      const latestBooking = bookingRes.bookings[0] // most recent
+      setBookingId(latestBooking.id)
       toast({
-        title: 'Booking confirmed!',
-        description:
-          pointsEarned > 0
-            ? `Your ${car.brand} ${car.name} is reserved. You earned ${pointsEarned} points!`
-            : `Your ${car.brand} ${car.name} is reserved.`,
+        title: 'Booking created!',
+        description: `Your ${car.brand} ${car.name} is reserved. Complete payment to confirm.`,
       })
-      navigate('bookings')
     } catch (err) {
       const e = err as ApiError
       toast({
@@ -85,6 +94,87 @@ export function BookingView({ carId }: { carId: string }) {
       })
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handlePayNow = async () => {
+    if (!bookingId || !car || !user) return
+    setPaying(true)
+    try {
+      // Step 1: Load Razorpay script
+      const scriptLoaded = await loadRazorpayScript()
+      if (!scriptLoaded) {
+        toast({
+          title: 'Payment Error',
+          description: 'Could not load the payment gateway. Please try again.',
+          variant: 'destructive',
+        })
+        setPaying(false)
+        return
+      }
+
+      // Step 2: Create Razorpay order (booking → payment_processing)
+      const order = await paymentsApi.createOrder(bookingId)
+
+      // Step 3: Open Razorpay checkout
+      openRazorpayCheckout({
+        keyId: order.keyId,
+        orderId: order.orderId,
+        amount: order.amount,
+        currency: order.currency,
+        customerName: user.name,
+        customerEmail: user.email,
+        customerPhone: user.phone || undefined,
+        carName: `${car.brand} ${car.name}`,
+        onSuccess: async (response) => {
+          // Step 4: Verify signature (payment_processing → paid)
+          try {
+            const result = await paymentsApi.verifyPayment({
+              bookingId,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            })
+
+            toast({
+              title: 'Payment verified!',
+              description: `Your booking is now confirmed.${result.pointsEarned > 0 ? ` You earned ${result.pointsEarned} points!` : ''}`,
+            })
+            navigate('booking-timeline')
+          } catch (err) {
+            const e = err as ApiError
+            toast({
+              title: 'Payment verification failed',
+              description: e.message || 'Your payment could not be verified. Please contact support.',
+              variant: 'destructive',
+            })
+            setPaying(false)
+          }
+        },
+        onFailure: (error) => {
+          toast({
+            title: 'Payment failed',
+            description: error.description || 'The payment was not completed.',
+            variant: 'destructive',
+          })
+          setPaying(false)
+        },
+        onDismiss: () => {
+          toast({
+            title: 'Payment cancelled',
+            description: 'You can complete the payment later from your bookings.',
+          })
+          setPaying(false)
+        },
+      })
+    } catch (err) {
+      const e = err as ApiError
+      toast({
+        title: 'Could not initiate payment',
+        description: e.message,
+        variant: 'destructive',
+      })
+      setPaying(false)
     }
   }
 
@@ -222,30 +312,73 @@ export function BookingView({ carId }: { carId: string }) {
             <div className="border-t border-white/10 pt-4 flex items-center justify-between">
               <span className="font-medium">Total</span>
               <span className="text-2xl font-bold text-gradient-gold">
-                ${totalPrice}
+                ₹{totalPrice}
               </span>
             </div>
 
-            <Button
-              size="lg"
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12"
-              disabled={!range?.from || !range?.to || totalDays === 0 || submitting}
-              onClick={handleConfirm}
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Confirming...
-                </>
-              ) : (
-                <>
-                  Confirm booking <Check className="ml-2 h-4 w-4" />
-                </>
-              )}
-            </Button>
+            {bookingId ? (
+              <>
+                {/* Payment step — booking created, now pay */}
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-300" />
+                    <p className="text-sm font-medium text-amber-200">
+                      Booking created — payment required
+                    </p>
+                  </div>
+                  <p className="text-xs text-amber-200/70">
+                    Your booking is reserved. Complete the payment now to confirm your rental.
+                    You can also pay later from your dashboard.
+                  </p>
+                </div>
+                <Button
+                  size="lg"
+                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12"
+                  disabled={paying}
+                  onClick={handlePayNow}
+                >
+                  {paying ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="mr-2 h-4 w-4" /> Pay ₹{totalPrice} Now
+                    </>
+                  )}
+                </Button>
+                <button
+                  onClick={() => navigate('booking-timeline')}
+                  className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+                >
+                  Pay later — go to my bookings
+                </button>
+              </>
+            ) : (
+              <>
+                <Button
+                  size="lg"
+                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12"
+                  disabled={!range?.from || !range?.to || totalDays === 0 || submitting}
+                  onClick={handleConfirm}
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Confirming...
+                    </>
+                  ) : (
+                    <>
+                      Confirm booking <Check className="ml-2 h-4 w-4" />
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
 
-            <p className="text-xs text-muted-foreground text-center">
-              Free cancellation up to 24h before pickup.
-            </p>
+            <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+              Secured by Razorpay · Test Mode
+            </div>
           </motion.div>
         </div>
       </div>

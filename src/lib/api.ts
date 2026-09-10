@@ -329,6 +329,25 @@ export const paymentsApi = {
         '/api/payments',
       )
       .then((r) => r.data),
+
+  // Razorpay: create order → checkout → verify
+  createOrder: (bookingId: string) =>
+    api
+      .post<{
+        orderId: string
+        amount: number
+        currency: string
+        bookingStatus: string
+        keyId: string
+      }>('/api/payments/create-order', { bookingId })
+      .then((r) => r.data),
+
+  verifyPayment: (data: {
+    bookingId: string
+    razorpayOrderId: string
+    razorpayPaymentId: string
+    razorpaySignature: string
+  }) => api.post<{ verified: boolean; bookingStatus: string; pointsEarned: number }>('/api/payments/verify', data).then((r) => r.data),
 }
 
 /* -------------------------- notifications ------------------------ */
@@ -442,7 +461,7 @@ export const adminApi = {
       api.patch(`/api/admin/customers/${id}`, { archived }).then((r) => r.data),
   },
 
-  // Payments
+  // Payments (with Razorpay refund)
   payments: {
     list: (q: AdminTableQuery = {}) =>
       api
@@ -450,6 +469,10 @@ export const adminApi = {
         .then((r) => r.data),
     updateStatus: (id: string, status: string) =>
       api.patch<{ payment: Payment }>(`/api/admin/payments/${id}`, { status }).then((r) => r.data),
+    refund: (paymentId: string, reason: string) =>
+      api
+        .post<{ refundId: string; status: string; message: string }>('/api/payments/refund', { paymentId, reason })
+        .then((r) => r.data),
   },
 
   // Complaints

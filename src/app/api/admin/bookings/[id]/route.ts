@@ -7,8 +7,10 @@ import { z } from 'zod'
 export const runtime = 'nodejs'
 
 // Allowed workflow transitions (forward + cancellation)
+// With Razorpay: booked → payment_processing → paid → pickup → in_use → returned → completed
 const FLOW: Record<string, string[]> = {
-  booked: ['paid', 'cancelled'],
+  booked: ['payment_processing', 'paid', 'cancelled'],
+  payment_processing: ['paid', 'cancelled'],
   paid: ['pickup', 'cancelled'],
   pickup: ['in_use'],
   in_use: ['returned'],

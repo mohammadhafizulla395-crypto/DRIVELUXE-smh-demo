@@ -92,6 +92,7 @@ export const bookingSchema = z
 export const bookingStatusSchema = z.object({
   status: z.enum([
     'booked',
+    'payment_processing',
     'paid',
     'pickup',
     'in_use',
@@ -99,6 +100,24 @@ export const bookingStatusSchema = z.object({
     'completed',
     'cancelled',
   ]),
+})
+
+/* --------------------------- razorpay payments --------------------------- */
+
+export const createOrderSchema = z.object({
+  bookingId: z.string().min(1, 'Booking ID is required'),
+})
+
+export const verifyPaymentSchema = z.object({
+  bookingId: z.string().min(1, 'Booking ID is required'),
+  razorpayOrderId: z.string().min(1, 'Order ID is required'),
+  razorpayPaymentId: z.string().min(1, 'Payment ID is required'),
+  razorpaySignature: z.string().min(1, 'Signature is required'),
+})
+
+export const refundSchema = z.object({
+  paymentId: z.string().min(1, 'Payment ID is required'),
+  reason: z.string().min(5, 'Reason must be at least 5 characters').max(500).default('Customer request'),
 })
 
 /* ------------------------------ reviews ------------------------------ */

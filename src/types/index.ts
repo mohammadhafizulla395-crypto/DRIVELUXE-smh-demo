@@ -33,10 +33,11 @@ export interface Car {
   createdAt: string
 }
 
-// Booking workflow: Booked → Paid → Pickup → In Use → Returned → Completed
-// (cancelled can happen from booked/paid)
+// Booking workflow: Booked → Payment Processing → Paid → Pickup → In Use → Returned → Completed
+// (cancelled can happen from booked/payment_processing/paid)
 export type BookingStatus =
   | 'booked'
+  | 'payment_processing'
   | 'paid'
   | 'pickup'
   | 'in_use'
@@ -105,8 +106,14 @@ export interface PointTransaction {
   createdAt: string
 }
 
-// Payment workflow: Pending → Paid → Refunded
-export type PaymentStatus = 'pending' | 'paid' | 'refunded'
+// Payment workflow: Pending → Processing → Paid → Refunded
+export type PaymentStatus =
+  | 'pending'
+  | 'processing'
+  | 'paid'
+  | 'refunded'
+  | 'refund_requested'
+  | 'refund_approved'
 
 export interface Payment {
   id: string
@@ -116,6 +123,15 @@ export interface Payment {
   method: string
   status: PaymentStatus
   txnRef: string | null
+  // Razorpay fields
+  razorpayOrderId: string | null
+  razorpayPaymentId: string | null
+  razorpaySignature: string | null
+  verified: boolean
+  // Refund fields
+  refundReason: string | null
+  refundRequestedBy: string | null
+  razorpayRefundId: string | null
   createdAt: string
   updatedAt: string
   booking?: Pick<Booking, 'id' | 'startDate' | 'endDate' | 'totalPrice'>

@@ -373,3 +373,33 @@ Stage Summary:
 - Cross-portal isolation intact
 - SQLite backup preserved at db/custom.db.sqlite-backup
 - Migration file: prisma/migrations/20260909152732_init_supabase/migration.sql
+
+---
+Task ID: P5.1
+Agent: main (Phase 5.1 — Razorpay Test Mode Integration)
+Task: Integrate Razorpay Test Mode with Payment Hold workflow (create-order → checkout → verify → paid)
+
+Work Log:
+- Added Razorpay env vars to .env (RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, NEXT_PUBLIC_RAZORPAY_KEY_ID)
+- Installed razorpay npm package
+- Updated Prisma schema: added payment_processing booking status; added razorpayOrderId, razorpayPaymentId, razorpaySignature, verified, razorpayRefundId fields to Payment model; added user relation to Payment
+- Pushed schema to Supabase + regenerated Prisma client
+- Created src/lib/razorpay.ts (backend): getRazorpay() instance + verifyRazorpaySignature() using HMAC SHA256
+- Created src/lib/razorpay-client.ts (frontend): loadRazorpayScript() + openRazorpayCheckout() — only uses public key
+- Created /api/payments/create-order: creates Razorpay order, moves booking to payment_processing, stores order ID
+- Created /api/payments/verify: verifies signature (HMAC SHA256), if valid moves booking to paid + awards points; if invalid, booking stays payment_processing
+- Created /api/payments/refund: admin-only, calls Razorpay refund API, cancels booking, reverses points
+- Updated booking-view.tsx: after booking creation, shows "Pay Now" button → Razorpay checkout → verify → navigate to timeline
+- Updated admin-payments.tsx: shows Order ID, Payment ID, Verified badge, Refund button with dialog
+- Updated booking-timeline.tsx: added payment_processing step to the 7-step visual journey
+- Updated status-badge.tsx: added payment_processing color (sky)
+- Updated admin bookings workflow: added payment_processing to allowed transitions
+- Verified: real Razorpay order created (order_TaDJG5WvfwkEwg...), invalid signature rejected, duplicate blocked, admin sees Razorpay fields, employee sees status only, secret key not in client bundle
+
+Stage Summary:
+- Lint: clean, 0 errors
+- Razorpay Test Mode fully integrated
+- Payment Hold workflow: Booked → Payment Processing → Verified → Paid
+- 3 new API routes (create-order, verify, refund)
+- Admin payments page shows Razorpay Order ID, Payment ID, Verified, Refund
+- Secret key never exposed to client
