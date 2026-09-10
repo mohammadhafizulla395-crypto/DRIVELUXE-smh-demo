@@ -40,9 +40,6 @@ export async function POST(req: Request) {
     if (!payment.razorpayPaymentId) {
       return fail('No Razorpay payment ID found for this payment.', 400)
     }
-    if (payment.status === 'refunded') {
-      return fail('This payment has already been refunded.', 400)
-    }
 
     // Initiate the Razorpay refund
     const razorpay = getRazorpay()

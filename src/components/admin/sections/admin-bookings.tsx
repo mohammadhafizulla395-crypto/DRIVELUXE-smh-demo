@@ -85,7 +85,8 @@ const STATUSES: { value: string; label: string }[] = [
 
 /** Allowed next transitions — mirrors the server's FLOW table. */
 const FLOW: Record<BookingStatus, BookingStatus[]> = {
-  booked: ['paid', 'cancelled'],
+  booked: ['payment_processing', 'paid', 'cancelled'],
+  payment_processing: ['paid', 'cancelled'],
   paid: ['pickup', 'cancelled'],
   pickup: ['in_use'],
   in_use: ['returned'],
@@ -96,6 +97,7 @@ const FLOW: Record<BookingStatus, BookingStatus[]> = {
 
 const STATUS_BADGE: Record<BookingStatus, string> = {
   booked: 'border-amber-500/30 bg-amber-500/15 text-amber-300',
+  payment_processing: 'border-sky-500/30 bg-sky-500/15 text-sky-300',
   paid: 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300',
   pickup: 'border-sky-500/30 bg-sky-500/15 text-sky-300',
   in_use: 'border-violet-500/30 bg-violet-500/15 text-violet-300',
@@ -112,6 +114,7 @@ const PAYMENT_BADGE: Record<string, string> = {
 
 const STATUS_LABEL: Record<BookingStatus, string> = {
   booked: 'Booked',
+  payment_processing: 'Payment Processing',
   paid: 'Paid',
   pickup: 'Pickup',
   in_use: 'In use',
@@ -122,6 +125,7 @@ const STATUS_LABEL: Record<BookingStatus, string> = {
 
 const TIMELINE: BookingStatus[] = [
   'booked',
+  'payment_processing',
   'paid',
   'pickup',
   'in_use',

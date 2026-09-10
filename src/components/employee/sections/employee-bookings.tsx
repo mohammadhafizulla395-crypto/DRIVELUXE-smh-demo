@@ -68,6 +68,7 @@ const STATUSES: { value: string; label: string }[] = [
 
 const STATUS_BADGE: Record<BookingStatus, string> = {
   booked: 'border-amber-500/30 bg-amber-500/15 text-amber-300',
+  payment_processing: 'border-sky-500/30 bg-sky-500/15 text-sky-300',
   paid: 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300',
   pickup: 'border-sky-500/30 bg-sky-500/15 text-sky-300',
   in_use: 'border-violet-500/30 bg-violet-500/15 text-violet-300',

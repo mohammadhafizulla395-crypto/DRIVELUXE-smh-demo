@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { cookies } from 'next/headers'
 import { db } from './db'
-import type { UserRole } from '@/types'
+import type { UserRole, AuthEmployee as AuthEmployeeType } from '@/types'
 
 const COOKIE_NAME = 'driveluxe_token'
 const EMPLOYEE_COOKIE_NAME = 'driveluxe_employee_token'
@@ -43,18 +43,7 @@ export interface AuthUser {
   points: number
 }
 
-export interface AuthEmployee {
-  id: string
-  employeeId: string
-  name: string
-  email: string
-  phone: string | null
-  role: string
-  status: string
-  ticketsResolved: number
-  avgResponseMin: number
-  customerRating: number
-}
+export type AuthEmployee = AuthEmployeeType
 
 /* ------------------------------ password ------------------------------ */
 
@@ -168,7 +157,7 @@ export async function getUserFromRequest(): Promise<AuthUser | null> {
       points: true,
     },
   })
-  return user
+  return user as AuthUser | null
 }
 
 /**
@@ -198,5 +187,5 @@ export async function getEmployeeFromRequest(): Promise<AuthEmployee | null> {
   if (!emp) return null
   // Suspended employees cannot use the portal
   if (emp.status === 'suspended') return null
-  return emp
+  return emp as unknown as AuthEmployee
 }

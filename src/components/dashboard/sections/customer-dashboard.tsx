@@ -35,7 +35,7 @@ export function CustomerDashboard() {
         if (!active) return
         setBookings(b.bookings)
         setPoints(p.points)
-        setOpenTickets(s.tickets.filter((t) => t.status === 'open' || t.status === 'assigned' || t.status === 'working').length)
+        setOpenTickets(s.tickets.filter((t) => t.status === 'open' || t.status === 'in_progress').length)
       })
       .catch((err) => {
         const e = err as ApiError

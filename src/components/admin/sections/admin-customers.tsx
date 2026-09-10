@@ -88,7 +88,7 @@ export function AdminCustomers() {
     adminApi.customers
       .list(q)
       .then((res) => {
-        setRows(res.customers as CustomerRow[])
+        setRows(res.customers as unknown as CustomerRow[])
         setPagination(res.pagination)
       })
       .catch((err) => {

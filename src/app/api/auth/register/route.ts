@@ -26,7 +26,7 @@ export async function POST(req: Request) {
       select: { id: true, name: true, email: true, role: true, phone: true, points: true },
     })
 
-    const token = signToken({ userId: user.id, role: user.role })
+    const token = signToken({ userId: user.id, role: user.role as 'user' | 'admin' })
     await setAuthCookie(token)
 
     return created({ user })

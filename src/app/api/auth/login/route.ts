@@ -20,7 +20,7 @@ export async function POST(req: Request) {
       return fail('Incorrect email or password.', 401)
     }
 
-    const token = signToken({ userId: user.id, role: user.role })
+    const token = signToken({ userId: user.id, role: user.role as 'user' | 'admin' })
     await setAuthCookie(token)
 
     return ok({

@@ -84,10 +84,11 @@ export function openRazorpayCheckout(options: CheckoutOptions) {
     },
   })
 
-  rzp.on('payment.failed', (response: { error: { code: string; description: string } }) => {
+  rzp.on('payment.failed', (response: Record<string, unknown>) => {
+    const err = response.error as { code: string; description: string }
     options.onFailure({
-      code: response.error.code,
-      description: response.error.description,
+      code: err.code,
+      description: err.description,
     })
   })
 

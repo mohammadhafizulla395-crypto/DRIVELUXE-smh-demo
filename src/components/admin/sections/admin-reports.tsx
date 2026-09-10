@@ -19,7 +19,6 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import type { EmployeeReport } from '@/types'
 
 const STATUS_STYLES: Record<string, string> = {
   pending: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
@@ -35,7 +34,16 @@ const TYPE_LABELS: Record<string, string> = {
   call_logged: 'Call Logged',
 }
 
-interface ReportRow extends EmployeeReport {
+interface ReportRow {
+  id: string
+  employeeId: string
+  type: string
+  description: string
+  refId: string | null
+  status: 'pending' | 'approved' | 'rejected'
+  adminNote: string | null
+  createdAt: string
+  reviewedAt: string | null
   employee?: { id: string; employeeId: string; name: string; role: string }
 }
 

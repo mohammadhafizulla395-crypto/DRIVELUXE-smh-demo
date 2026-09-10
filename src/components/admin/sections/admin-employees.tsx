@@ -124,7 +124,7 @@ export function AdminEmployees() {
     if (!actionTarget) return
     setBusy(true)
     try {
-      const data: Record<string, string> = { action: actionTarget.action }
+      const data: { action: string; role?: string } = { action: actionTarget.action }
       if (actionTarget.action === 'change_role') data.role = newRole
       await adminApi.employees.manage(actionTarget.employee.id, data)
       toast({ title: 'Action completed' })

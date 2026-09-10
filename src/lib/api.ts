@@ -381,6 +381,7 @@ export interface AdminTableQuery {
   category?: string
   rating?: number
   method?: string
+  role?: string
 }
 
 function buildQuery(q: AdminTableQuery = {}): string {
@@ -498,7 +499,7 @@ export const adminApi = {
         .get<{ reviews: Review[]; pagination: Pagination }>(`/api/admin/reviews?${buildQuery(q)}`)
         .then((r) => r.data),
     decide: (id: string, status: string) =>
-      api.patch<{ review: Review }>(`/api/admin/reviews/${id}`, { status }).then((r) => r.data),
+      api.put<{ review: Review }>(`/api/admin/reviews/${id}`, { status }).then((r) => r.data),
     archive: (id: string, archived: boolean) =>
       api.patch<{ review: Review }>(`/api/admin/reviews/${id}`, { archived }).then((r) => r.data),
   },
