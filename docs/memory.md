@@ -82,9 +82,9 @@ Admin payments page shows:
 ### Environment variables
 
 ```
-RAZORPAY_KEY_ID=rzp_test_TaCwpWw6cAE8Ya          # backend only
-RAZORPAY_KEY_SECRET=6HtNIs9bNPfKj737tXtc356D      # backend only — NEVER exposed to client
-NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_TaCwpWw6cAE8Ya  # safe for frontend
+RAZORPAY_KEY_ID=rzp_test_...          # backend only
+RAZORPAY_KEY_SECRET=...               # backend only — NEVER exposed to client
+NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_...  # safe for frontend
 ```
 
 ### Security

@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -52,3 +53,24 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# SQLite databases
+*.sqlite
+*.sqlite3
+*.db
+db/
+
+# Temporary files
+tmp_*
+tool-results/
+download/
+upload/
+
+# Z.ai artifacts
+.zscripts/
+Caddyfile
+
+# OS/editor files
+Thumbs.db
+.vscode/
+.idea/
