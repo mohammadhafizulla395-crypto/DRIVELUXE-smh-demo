@@ -1,5 +1,11 @@
 // DriveLuxe — Premium Car Rental Platform
-// Prisma schema (PostgreSQL via Supabase). Lists stored as comma-separated strings.
+// Prisma schema (local SQLite — fully offline, no external DB connection).
+// Lists stored as comma-separated strings.
+//
+// NOTE: The Supabase credentials in .env.supabase.bak are dead (the project
+// ref no longer resolves). To go back to Postgres: restore .env.supabase.bak
+// as .env, flip `provider` below back to "postgresql", re-add `directUrl`,
+// then run `bunx prisma migrate deploy` + seed.
 //
 // Three independent portals:
 //   1. Customer  (User with role=user)   — books cars, writes reviews, earns points
@@ -11,9 +17,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "sqlite"
+  url      = env("DATABASE_URL") // file:./dev.db — local, no server to reach
 }
 
 /* ============================= CUSTOMER ============================= */
